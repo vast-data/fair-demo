@@ -1,0 +1,87 @@
+{
+  "_about": "What is true about each demo folder, from the providers' own pages (data/SOURCES.md). Rules: exact = equals; any = contains at least one term (case-insensitive); min2 = contains at least two; absent = must not be filled in (nothing in the folder states it, so any value was invented).",
+  "climate/oisst-v2.1-2024-09-01": {
+    "domain": {"exact": "climate & earth science"},
+    "license": {"exact": "CC0-1.0"},
+    "creators": {"any": ["Boyin Huang", "Huang"]},
+    "temporalCoverage": {"any": ["2024-09-01"]},
+    "spatialCoverage": {"any": ["global", "-90", "-89.8", "90"]},
+    "instrument": {"any": ["AVHRR", "radiometer", "Spectrometer"]},
+    "measurementTechnique": {"any": ["interpolat", "optimum"]},
+    "keywords": {"min2": ["sea surface temperature", "sst", "ocean", "sea ice", "temperature"]}
+  },
+  "climate/scratch-run-0901": {
+    "domain": {"exact": "climate & earth science"},
+    "license": {"absent": true},
+    "creators": {"any": ["NOAA", "NCEI", "National Centers for Environmental Information"]},
+    "temporalCoverage": {"any": ["2024-09-01"]},
+    "spatialCoverage": {"any": ["global", "-90", "-89.8", "90"]},
+    "measurementTechnique": {"any": ["interpolat", "optimum"]},
+    "keywords": {"min2": ["sea surface temperature", "sst", "ocean", "sea ice", "temperature"]}
+  },
+  "astronomy/tess-s0001-tic261136679": {
+    "domain": {"exact": "astronomy & astrophysics"},
+    "license": {"exact": "CC0-1.0"},
+    "creators": {"any": ["TESS Science Processing Operations Center"]},
+    "temporalCoverage": {"any": ["2018-07-25", "2018-07", "2018-08"]},
+    "spatialCoverage": {"any": ["84.29", "-80.4", "RA", "TIC 261136679"]},
+    "instrument": {"any": ["TESS"]},
+    "measurementTechnique": {"any": ["photometr"]},
+    "keywords": {"min2": ["tess", "light curve", "lightcurve", "photometry", "transit", "flux", "exoplanet"]}
+  },
+  "particle-physics/cms-higgs-zz-4l-8tev": {
+    "domain": {"exact": "particle physics"},
+    "license": {"exact": "CC0-1.0"},
+    "creators": {"any": ["Stefan Wunsch", "Wunsch"]},
+    "instrument": {"any": ["CMS"]},
+    "measurementTechnique": {"any": ["simulat", "monte carlo"]},
+    "keywords": {"min2": ["higgs", "lepton", "muon", "electron", "zz", "cms", "nanoaod"]}
+  },
+  "particle-physics/user-skims-07": {
+    "domain": {"exact": "particle physics"},
+    "license": {"absent": true},
+    "creators": {"absent": true},
+    "measurementTechnique": {"any": ["simulat", "monte carlo"]},
+    "keywords": {"min2": ["muon", "electron", "lepton", "transverse momentum", "missing transverse", "vertex"]}
+  },
+  "genomics/gnomad-v2.1.1-exomes-chr21-slice": {
+    "domain": {"exact": "genomics"},
+    "license": {"exact": "CC0-1.0"},
+    "creators": {"any": ["gnomAD", "Genome Aggregation Database"]},
+    "measurementTechnique": {"any": ["sequenc", "exome", "variant call", "haplotypecaller"]},
+    "keywords": {"min2": ["allele frequency", "exome", "variant", "gnomad", "grch37", "chromosome 21"]}
+  },
+  "bioimaging/bbbc039-u2os-nuclei-sample": {
+    "domain": {"exact": "bioimaging & microscopy"},
+    "license": {"exact": "CC0-1.0"},
+    "creators": {"any": ["Broad Bioimage Benchmark Collection"]},
+    "temporalCoverage": {"any": ["2010-03"]},
+    "measurementTechnique": {"any": ["fluorescen", "microscop"]},
+    "keywords": {"min2": ["nuclei", "nucleus", "segmentation", "u2os", "dapi", "hoechst", "microscopy"]}
+  },
+  "bioimaging/plate-br21381-export": {
+    "domain": {"exact": "bioimaging & microscopy"},
+    "license": {"absent": true},
+    "creators": {"absent": true},
+    "temporalCoverage": {"any": ["2010-03"]},
+    "measurementTechnique": {"any": ["fluorescen", "microscop"]},
+    "keywords": {"min2": ["dapi", "microscopy", "fluorescence", "nuclei", "metamorph", "cell"]}
+  },
+  "public-sector/dft-aadf-wales": {
+    "domain": {"exact": "public sector & social statistics"},
+    "license": {"exact": "OGL-UK-3.0"},
+    "creators": {"any": ["Department for Transport"]},
+    "temporalCoverage": {"any": ["2000"]},
+    "spatialCoverage": {"any": ["Wales"]},
+    "measurementTechnique": {"any": ["count", "estimat"]},
+    "keywords": {"min2": ["traffic", "road", "wales", "vehicle", "aadf", "annual average daily flow"]}
+  },
+  "public-sector/export-2025-q3": {
+    "domain": {"exact": "public sector & social statistics"},
+    "license": {"absent": true},
+    "creators": {"absent": true},
+    "temporalCoverage": {"any": ["2000"]},
+    "measurementTechnique": {"any": ["count", "estimat"]},
+    "keywords": {"min2": ["traffic", "road", "vehicle", "count", "hgv", "flow"]}
+  }
+}

@@ -1,0 +1,78 @@
+# The FAIR portal on your Kubernetes cluster, beside DataEngine's namespace, where it can reach S3, VAST DB
+# and its vector search directly. Applied by ./deploy/de.py up portal, which fills in ${IMAGE},
+# ${S3_ENDPOINT}, ${HTTPS_PROXY} and the rest, and creates the fair-portal-secrets Secret (S3 and model keys).
+# Reached at http://<any node>:30080 (FAIR_PORTAL_NODE_PORT).
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: fair-portal
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: portal
+  namespace: fair-portal
+spec:
+  replicas: 1
+  selector:
+    matchLabels: {app: fair-portal}
+  template:
+    metadata:
+      labels: {app: fair-portal}
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        seccompProfile: {type: RuntimeDefault}
+      # VAST DB's query engine hands back VIPs by name (ipv4-15-0-0-30.); the pod has no DNS for them.
+      hostAliases:
+        - ip: "${PROTOCOLS_VIP}"
+          hostnames: ["${VIP_NAME}"]
+      containers:
+        - name: portal
+          image: ${IMAGE}
+          ports: [{containerPort: 8080}]
+          env:
+            - {name: FAIR_STORE, value: cluster}
+            - {name: FAIR_IN_CLUSTER, value: "1"}
+            - {name: FAIR_S3_ENDPOINT, value: "${S3_ENDPOINT}"}
+            - {name: DB_BUCKET, value: fair-db}
+            - {name: DB_SCHEMA, value: fair}
+            - {name: LITELLM_BASE_URL, value: "${LITELLM_BASE_URL}"}
+            - {name: FAIR_CHAT_MODEL, value: "${CHAT_MODEL}"}
+            - {name: FAIR_EMBED_MODEL, value: "${EMBED_MODEL}"}
+            - {name: HTTPS_PROXY, value: "${HTTPS_PROXY}"}
+            - {name: NO_PROXY, value: "${PROTOCOLS_VIP},${VIP_NAME},${VMS_HOST},localhost,127.0.0.1,.svc,.cluster.local"}
+            # VAST Catalog, for the backlog: queried through VMS as the tenant's admin (scoped to the tenant)
+            - {name: VMS_URL, value: "${VMS_URL}"}
+            - {name: VMS_TENANT, value: "${VMS_TENANT}"}
+            - {name: VMS_USER, value: "${VMS_USER}"}
+            - name: VMS_PASSWORD
+              valueFrom: {secretKeyRef: {name: fair-portal-secrets, key: vms-password}}
+            - name: FAIR_S3_ACCESS_KEY
+              valueFrom: {secretKeyRef: {name: fair-portal-secrets, key: s3-access-key}}
+            - name: FAIR_S3_SECRET_KEY
+              valueFrom: {secretKeyRef: {name: fair-portal-secrets, key: s3-secret-key}}
+            - name: LITELLM_API_KEY
+              valueFrom: {secretKeyRef: {name: fair-portal-secrets, key: llm-api-key}}
+          readinessProbe:
+            httpGet: {path: /api/info, port: 8080}
+            periodSeconds: 5
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities: {drop: ["ALL"]}
+          resources:
+            requests: {cpu: 100m, memory: 256Mi}
+            limits: {memory: 1Gi}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: portal
+  namespace: fair-portal
+spec:
+  type: NodePort
+  selector: {app: fair-portal}
+  ports:
+    - {port: 8080, targetPort: 8080, nodePort: 30080}

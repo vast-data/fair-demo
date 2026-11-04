@@ -1,0 +1,29 @@
+[project]
+name = "fairdemo"
+version = "0.1.0"
+description = "Autonomous FAIR curation on the VAST Data Platform: profile, curate, score, publish"
+requires-python = ">=3.12,<3.14"
+license = { text = "Apache-2.0" }
+readme = "README.md"
+dependencies = [
+    "numpy>=1.26",
+    "netCDF4>=1.7",
+    "h5py>=3.11",
+    "astropy>=6.1",
+    "uproot>=5.4",
+    "tifffile>=2024.8",
+    "pyarrow>=17",
+    "pyyaml>=6",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8"]
+portal = ["fastapi>=0.115", "uvicorn[standard]>=0.30", "python-multipart>=0.0.9", "boto3>=1.34"]
+function = ["boto3>=1.34", "vastdb>=1.3"]
+
+[project.scripts]
+fairdemo = "fairdemo.cli:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"

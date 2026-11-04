@@ -1,0 +1,23 @@
+cff-version: 1.2.0
+message: "If you use or adapt this software, please cite it as below."
+title: "FAIR curation on the VAST Data Platform"
+abstract: >-
+  A working demonstration of automated FAIR curation: research data written to VAST over S3 or NFS is
+  profiled and described by a VAST DataEngine function, reviewed by a person, and published with RO-Crate
+  and Croissant metadata, an identifier, a landing page, a snapshot and a measured FAIR score.
+type: software
+authors:
+  - family-names: Snow
+    given-names: Chris
+    affiliation: VAST Data
+license: Apache-2.0
+repository-code: "https://github.com/vast-data/fair-demo"
+version: 0.1.0
+date-released: 2026-11-04
+keywords:
+  - FAIR data
+  - research data management
+  - metadata
+  - RO-Crate
+  - Croissant
+  - VAST Data

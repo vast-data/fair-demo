@@ -1,0 +1,15 @@
+.env
+.env.*
+!.env.example
+.venv/
+__pycache__/
+*.egg-info/
+data/raw/
+data/staged/
+out/
+deploy/.state.json
+deploy/build/
+data/buckets/
+deploy/.state-*.json
+.DS_Store
+.claude/

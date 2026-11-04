@@ -1,0 +1,1087 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>FAIR Curation</title>
+<script>
+  // Applied before first paint so a pinned theme never flashes the other one.
+  try { const t = localStorage.getItem("theme"); if (t === "light" || t === "dark") document.documentElement.dataset.theme = t; } catch (e) {}
+</script>
+<style>
+:root {
+  --bg: #f6f7f9; --panel: #ffffff; --ink: #16181d; --muted: #5b6270; --line: #e3e6eb; --soft: #eef1f5;
+  --accent: #1f6feb; --accent-ink: #ffffff; --good: #1a7f37; --warn: #9a6700; --bad: #cf222e;
+  --header: #1d4ed8; --companion: #0f766e; --inferred: #7c3aed; --human: #b45309; --none: #9aa1ad;
+  --shadow: 0 1px 2px rgba(16,24,40,.06), 0 1px 3px rgba(16,24,40,.08);
+}
+/* Dark: follows the system unless the theme control pins light or dark (data-theme on <html>). */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) { --bg: #0d1117; --panel: #161b22; --ink: #e6edf3; --muted: #9aa4b2; --line: #2b323c; --soft: #1c232c;
+    --accent: #4c8dff; --good: #3fb950; --warn: #d29922; --bad: #f85149;
+    --header: #79a8ff; --companion: #4fd1c5; --inferred: #b794f6; --human: #f6ad55; --none: #6e7681;
+    --shadow: none; color-scheme: dark; }
+}
+:root[data-theme="dark"] { --bg: #0d1117; --panel: #161b22; --ink: #e6edf3; --muted: #9aa4b2; --line: #2b323c; --soft: #1c232c;
+  --accent: #4c8dff; --good: #3fb950; --warn: #d29922; --bad: #f85149;
+  --header: #79a8ff; --companion: #4fd1c5; --inferred: #b794f6; --human: #f6ad55; --none: #6e7681;
+  --shadow: none; color-scheme: dark; }
+:root[data-theme="light"] { color-scheme: light; }
+* { box-sizing: border-box; }
+:root { --r: 10px; --r-sm: 7px; --h: 32px; --gap: 16px; --mono: ui-monospace, SFMono-Regular, Menlo, monospace; --head-h: 56px; }
+html { scroll-padding-top: calc(var(--head-h) + 12px); }
+body { margin: 0; font: 14px/1.5 ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; color: var(--ink); background: var(--bg);
+  -webkit-font-smoothing: antialiased; }
+a { color: var(--accent); }
+code { font-family: var(--mono); font-size: .92em; }
+
+/* Header */
+header { position: sticky; top: 0; z-index: 30; height: var(--head-h); display: flex; align-items: center; gap: 10px; padding: 0 20px;
+  background: color-mix(in srgb, var(--panel) 92%, transparent); backdrop-filter: blur(8px); border-bottom: 1px solid var(--line); }
+header .brand { display: flex; align-items: center; gap: 10px; min-width: 0; }
+header .logo { width: 26px; height: 26px; border-radius: 7px; background: var(--accent); color: var(--accent-ink); display: grid; place-items: center;
+  font-weight: 800; font-size: 13px; letter-spacing: -.02em; flex: none; }
+header h1 { font-size: 15px; margin: 0; letter-spacing: -.01em; white-space: nowrap; }
+header .sub { color: var(--muted); white-space: nowrap; }
+@media (max-width: 1100px) { header .sub .on-vast { display: none; } }
+header .chip.mode { margin-left: auto; display: inline-flex; align-items: center; gap: 6px; max-width: 40vw; overflow: hidden; text-overflow: ellipsis; }
+header .chip.mode::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--good); flex: none; }
+@media (max-width: 720px) { header .sub, header .chip.mode { display: none; } header #backlog-btn { margin-left: auto; } header { padding: 0 16px; } }
+@media (max-width: 480px) { #theme .lbl { display: none; } header { gap: 8px; } }
+
+/* Chips and status */
+.chip { display: inline-flex; align-items: center; gap: 4px; height: 22px; padding: 0 9px; border-radius: 999px; font-size: 12px; line-height: 1;
+  border: 1px solid var(--line); color: var(--muted); background: var(--panel); white-space: nowrap; }
+a.chip[data-open] { cursor: pointer; text-decoration: none; }
+a.chip[data-open]:hover { filter: brightness(1.1); }
+.st-published, .st-accepted { color: var(--good); border-color: color-mix(in srgb, var(--good) 35%, transparent); background: color-mix(in srgb, var(--good) 10%, var(--panel)); }
+.st-proposed { color: var(--accent); border-color: color-mix(in srgb, var(--accent) 35%, transparent); background: color-mix(in srgb, var(--accent) 9%, var(--panel)); }
+.st-needs-review, .st-missing { color: var(--warn); border-color: color-mix(in srgb, var(--warn) 40%, transparent); background: color-mix(in srgb, var(--warn) 10%, var(--panel)); }
+.st-rejected { color: var(--bad); border-color: color-mix(in srgb, var(--bad) 35%, transparent); background: color-mix(in srgb, var(--bad) 8%, var(--panel)); }
+
+/* Layout: a sticky side column whose dataset list takes the height that is left */
+main { display: grid; grid-template-columns: minmax(300px, 360px) minmax(0, 1fr); gap: var(--gap); padding: var(--gap) 20px 28px; align-items: start; }
+.side { position: sticky; top: calc(var(--head-h) + var(--gap)); height: calc(100vh - var(--head-h) - 2 * var(--gap));
+  display: flex; flex-direction: column; gap: 12px; min-height: 0; }
+.side > .panel { flex: none; }
+.side > .panel.grow { flex: 1 1 auto; min-height: 220px; display: flex; flex-direction: column; overflow: hidden; }
+.side > .panel.grow .list { flex: 1; min-height: 0; overflow: auto; }
+.side > .panel.activity .log { max-height: 108px; }
+@media (max-width: 860px) {
+  main { grid-template-columns: minmax(0, 1fr); padding: 12px 16px 24px; }
+  .side { position: static; height: auto; }
+  .side > .panel.grow .list { max-height: 60vh; }
+}
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: var(--r); box-shadow: var(--shadow); }
+.panel > h2 { font-size: 11.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 0; padding: 14px 16px 8px; }
+
+/* Controls */
+input[type=search], input[type=text], textarea, select { width: 100%; font: inherit; color: var(--ink); background: var(--panel);
+  border: 1px solid var(--line); border-radius: var(--r-sm); padding: 0 10px; height: var(--h); outline: none; transition: border-color .15s, box-shadow .15s; }
+textarea { height: auto; min-height: 64px; padding: 7px 10px; resize: vertical; line-height: 1.5; }
+input:focus, textarea:focus, select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 18%, transparent); }
+input::placeholder, textarea::placeholder { color: var(--none); }
+button { font: inherit; font-size: 13px; height: var(--h); padding: 0 12px; border: 1px solid var(--line); background: var(--panel); color: var(--ink);
+  border-radius: var(--r-sm); cursor: pointer; white-space: nowrap; transition: background .12s, border-color .12s, color .12s; }
+button:hover { background: var(--soft); }
+button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+button.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: 600; padding: 0 16px; }
+button.primary:hover { filter: brightness(1.07); background: var(--accent); }
+button.primary:disabled { opacity: .45; cursor: not-allowed; filter: none; }
+button.sm { height: 26px; padding: 0 10px; font-size: 12.5px; }
+button.link { height: auto; padding: 0; border: 0; background: none; color: var(--accent); font-size: 12.5px; }
+button.link:hover { text-decoration: underline; background: none; }
+/* Accept / Reject as one control */
+.seg { display: inline-flex; }
+.seg button { height: 28px; padding: 0 11px; border-radius: 0; font-size: 12.5px; }
+.seg button:first-child { border-radius: var(--r-sm) 0 0 var(--r-sm); }
+.seg button:last-child { border-radius: 0 var(--r-sm) var(--r-sm) 0; margin-left: -1px; }
+.seg button.on, button.on { border-color: var(--good); color: var(--good); background: color-mix(in srgb, var(--good) 10%, var(--panel)); position: relative; }
+.seg button.off, button.off { border-color: var(--bad); color: var(--bad); background: color-mix(in srgb, var(--bad) 8%, var(--panel)); position: relative; }
+
+/* Side panels */
+.search { padding: 0 16px 12px; }
+.vsearch { position: relative; }
+.suggest { position: absolute; left: 16px; right: 16px; top: calc(100% - 8px); z-index: 20; background: var(--panel);
+  border: 1px solid var(--line); border-radius: var(--r-sm); box-shadow: 0 10px 30px rgba(0,0,0,.14); max-height: 340px; overflow: auto; padding: 4px; }
+.suggest a { display: block; padding: 7px 10px; border-radius: 5px; cursor: pointer; color: var(--ink); text-decoration: none; font-size: 13px; }
+.suggest a:hover { background: var(--soft); }
+.suggest a i { color: var(--muted); font-style: normal; font-size: 12px; }
+.suggest a span { display: block; color: var(--muted); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.suggest .more { padding: 7px 10px 5px; color: var(--muted); font-size: 12px; border-top: 1px solid var(--line); margin-top: 4px; }
+.drop { margin: 0 16px 12px; padding: 14px; border: 1.5px dashed var(--line); border-radius: var(--r-sm); color: var(--muted); text-align: center;
+  font-size: 13px; background: var(--soft); transition: border-color .15s, color .15s, background .15s; }
+.drop.hot { border-color: var(--accent); color: var(--accent); background: color-mix(in srgb, var(--accent) 8%, var(--panel)); }
+.try { margin: 0 16px 14px; font-size: 13px; color: var(--muted); }
+.try summary { cursor: pointer; color: var(--ink); font-weight: 600; font-size: 12.5px; list-style: none; display: flex; align-items: center; gap: 6px; }
+.try summary::-webkit-details-marker { display: none; }
+.try summary::before { content: "›"; display: inline-block; transition: transform .15s; color: var(--muted); font-size: 15px; line-height: 1; }
+.try[open] summary::before { transform: rotate(90deg); }
+.try p { margin: 8px 0; }
+.try ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 6px; }
+.try li { padding: 7px 10px; border: 1px solid var(--line); border-radius: var(--r-sm); }
+.try li:last-child { border: 0; padding: 2px 0 0; }
+.try a { color: var(--accent); text-decoration: none; font-weight: 500; }
+.try a:hover { text-decoration: underline; }
+.try li span { display: block; font-size: 12px; }
+.searchnote { color: var(--muted); font-size: 12px; padding: 0 16px 10px; display: flex; gap: 8px; justify-content: space-between; margin-top: -4px; }
+.searchnote a { color: var(--accent); cursor: pointer; }
+.searchnote .eng { cursor: help; white-space: nowrap; }
+.pending { color: var(--muted); font-size: 12px; padding: 0 16px; }
+.pending:not(:empty) { padding-bottom: 10px; }
+.list { border-top: 1px solid var(--line); }
+.item { padding: 11px 16px; border-bottom: 1px solid var(--line); cursor: pointer; transition: background .1s; }
+.item:last-child { border-bottom: 0; }
+.item:hover { background: var(--soft); }
+.item.sel { background: color-mix(in srgb, var(--accent) 7%, var(--panel)); box-shadow: inset 3px 0 0 var(--accent); }
+.item .t { font-weight: 600; font-size: 13.5px; line-height: 1.35; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.item .m { color: var(--muted); font-size: 12px; display: flex; gap: 8px; flex-wrap: wrap; margin-top: 6px; align-items: center; }
+.item .needs { color: var(--warn); font-size: 12px; margin-top: 4px; }
+.score { font-variant-numeric: tabular-nums; }
+.log { font: 11.5px/1.6 var(--mono); color: var(--muted); max-height: 160px; overflow: auto; padding: 0 16px 12px; }
+
+/* Detail */
+.detail { padding: 22px 24px 0; }
+.detail > :last-child { margin-bottom: 24px; }
+.empty { color: var(--muted); padding: 56px 18px; text-align: center; }
+.top { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 20px; align-items: start; }
+.top h2 { font-size: 20px; line-height: 1.3; margin: 0 0 6px; letter-spacing: -.015em; text-wrap: balance; }
+.top .path { color: var(--muted); font-family: var(--mono); font-size: 12px; overflow-wrap: anywhere; }
+@media (max-width: 640px) { .top { grid-template-columns: 1fr; } }
+.scores { display: flex; gap: 8px; }
+.big { text-align: center; padding: 8px 14px 7px; border: 1px solid var(--line); border-radius: var(--r); min-width: 88px; background: var(--panel); }
+.big b { display: block; font-size: 26px; line-height: 1.1; font-variant-numeric: tabular-nums; letter-spacing: -.02em; }
+.big span { color: var(--muted); font-size: 10.5px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; }
+.big.after { border-color: color-mix(in srgb, var(--good) 35%, var(--line)); background: color-mix(in srgb, var(--good) 6%, var(--panel)); }
+.big.after b { color: var(--good); }
+.fair { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin: 18px 0 4px; }
+@media (max-width: 640px) { .fair { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.fair > div { font-size: 12px; color: var(--muted); display: grid; grid-template-columns: 1fr auto; row-gap: 5px; }
+.fair > div b { color: var(--ink); }
+.bar { grid-column: 1 / -1; height: 6px; background: var(--soft); border-radius: 3px; overflow: hidden; }
+.bar i { display: block; height: 100%; background: var(--accent); border-radius: 3px; transition: width .3s; }
+.callout { margin: 16px 0; padding: 11px 14px; border-radius: var(--r-sm); border: 1px solid color-mix(in srgb, var(--warn) 45%, transparent);
+  border-left: 3px solid var(--warn); color: var(--ink); background: color-mix(in srgb, var(--warn) 8%, var(--panel)); }
+.callout.ok { border-color: color-mix(in srgb, var(--good) 40%, transparent); border-left-color: var(--good); background: color-mix(in srgb, var(--good) 8%, var(--panel)); }
+.links { display: inline-flex; gap: 14px; margin-left: 6px; flex-wrap: wrap; }
+.links a { color: var(--accent); }
+.section-title { font-size: 11.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 22px 0 6px; }
+
+/* Tables */
+table { width: 100%; border-collapse: collapse; }
+th { text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); font-weight: 600; padding: 8px 10px;
+  border-bottom: 1px solid var(--line); white-space: nowrap; }
+td { padding: 11px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+tbody tr:last-child td { border-bottom: 0; }
+tbody tr:hover td { background: color-mix(in srgb, var(--soft) 55%, transparent); }
+.fields td { padding-top: 12px; padding-bottom: 12px; }
+table.fields { table-layout: fixed; }
+table.fields th:nth-child(1) { width: 170px; } table.fields th:nth-child(3) { width: 250px; } table.fields th:nth-child(4) { width: 150px; }
+@media (max-width: 1100px) { table.fields th:nth-child(1) { width: 130px; } table.fields th:nth-child(3) { width: 200px; } }
+td.f { font-weight: 600; width: 170px; }
+td.f .key { display: block; font: 400 11px var(--mono); color: var(--muted); margin-top: 2px; }
+td.v { min-width: 260px; }
+td.src { width: 220px; }
+td.act { width: 150px; white-space: nowrap; text-align: right; }
+tr.decided-accept td.f { box-shadow: inset 3px 0 0 var(--good); }
+tr.decided-reject td.f { box-shadow: inset 3px 0 0 var(--bad); }
+.srcchip { display: inline-flex; align-items: center; height: 20px; font-size: 11px; font-weight: 600; padding: 0 8px; border-radius: 999px; color: var(--accent-ink); }
+.s-header { background: var(--header); } .s-companion { background: var(--companion); } .s-inferred { background: var(--inferred); }
+.s-human { background: var(--human); } .s-none { background: var(--none); }
+.ev { color: var(--muted); font-size: 12px; margin-top: 5px; overflow-wrap: anywhere; line-height: 1.4; }
+.ev code { color: var(--ink); background: var(--soft); padding: 1px 5px; border-radius: 4px; font-size: 11px; overflow-wrap: normal; }
+.ev .file { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }
+.conf { display: flex; align-items: center; gap: 6px; margin-top: 6px; font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.conf span { height: 4px; width: 72px; background: var(--soft); border-radius: 2px; overflow: hidden; }
+.conf i { display: block; height: 100%; }
+.val { white-space: pre-wrap; overflow-wrap: anywhere; }
+.val.clamp { display: -webkit-box; -webkit-line-clamp: 5; -webkit-box-orient: vertical; overflow: hidden; }
+.val + .link { margin-top: 4px; }
+.vars td { font-size: 13px; } .vars a { color: var(--accent); cursor: pointer; }
+.vars .chip { height: 20px; font-size: 11px; margin: 2px 2px 0 0; }
+
+/* Collapsible sections */
+details { margin-top: 18px; border: 1px solid var(--line); border-radius: var(--r); }
+details > summary { cursor: pointer; font-weight: 600; padding: 11px 14px; list-style: none; display: flex; align-items: center; gap: 8px; }
+details > summary::-webkit-details-marker { display: none; }
+details > summary::before { content: "›"; color: var(--muted); font-size: 16px; line-height: 1; transition: transform .15s; }
+details[open] > summary::before { transform: rotate(90deg); }
+details[open] > summary { border-bottom: 1px solid var(--line); }
+details > :not(summary) { margin: 0; }
+details > .checks { padding: 10px 14px 12px; }
+details.try { border: 0; border-radius: 0; margin-top: 0; }
+details.try > summary { padding: 0; border: 0; }
+.checks { columns: 2 320px; column-gap: 28px; }
+.check { break-inside: avoid; display: flex; gap: 9px; padding: 4px 0; font-size: 13px; }
+.check .ok { color: var(--good); font-weight: 700; } .check .no { color: var(--none); }
+.check code { color: var(--muted); font-size: 10.5px; background: var(--soft); padding: 1px 5px; border-radius: 4px; white-space: nowrap; }
+
+/* Publish bar: stays in view while reviewing */
+.pubbar { position: sticky; bottom: 0; z-index: 5; display: flex; gap: 10px; align-items: center; flex-wrap: wrap;
+  margin: 20px -24px 0; padding: 12px 24px; border-top: 1px solid var(--line); border-radius: 0 0 var(--r) var(--r);
+  background: color-mix(in srgb, var(--panel) 94%, transparent); backdrop-filter: blur(6px); }
+.pubbar label { color: var(--muted); font-size: 13px; }
+.pubbar input { width: 240px; }
+.pubbar .sub { color: var(--muted); font-size: 13px; }
+.row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-top: 16px; }
+.row label { color: var(--muted); }
+.sim { display: inline-flex; align-items: center; gap: 6px; font-variant-numeric: tabular-nums; }
+.sim i { display: inline-block; height: 5px; width: 60px; background: var(--soft); border-radius: 3px; overflow: hidden; }
+.sim i b { display: block; height: 100%; background: var(--accent); }
+
+/* Backlog */
+.tiles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin: 18px 0; }
+@media (max-width: 600px) { .tiles { grid-template-columns: 1fr; } }
+.tile { border: 1px solid var(--line); border-radius: var(--r); padding: 12px 14px; }
+.tile b { display: block; font-size: 24px; line-height: 1.15; font-variant-numeric: tabular-nums; letter-spacing: -.02em; }
+.tile span { color: var(--muted); font-size: 12px; }
+.tile.dark { border-left: 3px solid var(--warn); } .tile.dark b { color: var(--warn); }
+.tile.done { border-left: 3px solid var(--good); } .tile.done b { color: var(--good); }
+.tile:not(.dark):not(.done) { border-left: 3px solid var(--accent); }
+.bl td { font-size: 13px; vertical-align: middle; } .bl .p { font-family: var(--mono); font-size: 12px; overflow-wrap: anywhere; }
+.bl td:last-child { text-align: right; white-space: nowrap; }
+.bl td:not(.p) { white-space: nowrap; }
+.bl .chip { height: 20px; font-size: 11px; }
+.bl .sub { color: var(--muted); }
+.sub { color: var(--muted); }
+@media (max-width: 700px) {
+  .detail { padding: 16px 16px 0; }
+  .pubbar { margin: 20px -16px 0; padding: 10px 16px; } .pubbar input { width: auto; flex: 1; min-width: 140px; }
+  table.fields, table.fields tbody, table.fields tr, table.fields td { display: block; width: auto; }
+  table.fields thead { display: none; }
+  table.fields tr { padding: 10px 0; border-bottom: 1px solid var(--line); }
+  table.fields td { border: 0; padding: 3px 0; min-width: 0; }
+  table.fields td.act { text-align: left; padding-top: 8px; }
+  .bl, .vars { display: block; overflow-x: auto; }
+}
+/* Help menu and dialog */
+.menu { position: relative; }
+.menu-list { position: absolute; right: 0; top: calc(100% + 6px); min-width: 230px; background: var(--panel); border: 1px solid var(--line);
+  border-radius: 8px; box-shadow: 0 8px 24px rgba(0,0,0,.18); padding: 4px; z-index: 10; display: none; }
+.menu.open .menu-list { display: block; }
+.menu-list button, .menu-list a { display: block; width: 100%; text-align: left; border: 0; background: none; padding: 7px 10px;
+  border-radius: 5px; color: var(--ink); text-decoration: none; font: inherit; }
+.menu-list button:hover, .menu-list a:hover { background: var(--soft); }
+.menu-list hr { border: 0; border-top: 1px solid var(--line); margin: 4px 0; }
+dialog { width: min(1060px, calc(100% - 32px)); max-height: calc(100vh - 48px); padding: 0; border: 1px solid var(--line); border-radius: 12px;
+  background: var(--panel); color: var(--ink); }
+dialog::backdrop { background: rgba(0,0,0,.45); }
+.dlg-head { display: flex; align-items: center; gap: 4px; padding: 10px 14px; border-bottom: 1px solid var(--line); position: sticky; top: 0; background: var(--panel); flex-wrap: wrap; }
+.dlg-head .tab { border: 0; background: none; padding: 6px 10px; border-radius: 6px; color: var(--muted); font-weight: 600; }
+.dlg-head .tab.on { background: var(--soft); color: var(--ink); }
+.dlg-head .x { margin-left: auto; }
+.dlg-body { padding: 16px 20px 22px; overflow: auto; }
+.dlg-body h3 { margin: 18px 0 6px; font-size: 15px; }
+.dlg-body p, .dlg-body li { max-width: 78ch; }
+.dlg-body .lead { font-size: 15px; margin-top: 0; }
+.arch { width: 100%; min-width: 760px; height: auto; display: block; }
+.arch-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 10px; padding: 8px; background: var(--bg); margin: 10px 0 6px; }
+.arch .box { fill: var(--panel); stroke: var(--line); stroke-width: 1.2; }
+.arch .zone { fill: color-mix(in srgb, var(--accent) 4%, transparent); stroke: color-mix(in srgb, var(--accent) 45%, var(--line)); stroke-width: 1.4; }
+.arch .zone.k8s { fill: color-mix(in srgb, var(--muted) 5%, transparent); stroke: var(--muted); stroke-dasharray: 7 5; }
+.arch .zl { fill: var(--muted); font-size: 11px; font-weight: 700; letter-spacing: .08em; }
+.arch .group { fill: color-mix(in srgb, var(--accent) 7%, transparent); stroke: var(--accent); stroke-width: 1.2; stroke-dasharray: 5 4; }
+.arch .step { fill: var(--panel); stroke: var(--accent); stroke-width: 1.2; }
+.arch .ext { fill: var(--panel); stroke: var(--inferred); stroke-width: 1.2; }
+.arch .you { fill: var(--panel); stroke: var(--human); stroke-width: 1.6; }
+.arch text { fill: var(--ink); font: 13px ui-sans-serif, system-ui, sans-serif; }
+.arch .t { font-weight: 650; }
+.arch .s { fill: var(--muted); font-size: 11.5px; }
+.arch .g { fill: var(--accent); font-size: 11px; font-weight: 700; letter-spacing: .05em; }
+.arch .ln { stroke: var(--muted); stroke-width: 1.4; fill: none; }
+.arch .ln.dash { stroke-dasharray: 5 4; stroke: var(--human); }
+.arch .num { fill: var(--accent); }
+.arch .num + text, .arch .numt { fill: var(--accent-ink); font-size: 11.5px; font-weight: 700; }
+.arch .ah { fill: var(--muted); }
+.arch .ah.you { fill: var(--human); }
+ol.steps { padding-left: 22px; } ol.steps li { margin: 4px 0; }
+.legend { display: grid; grid-template-columns: max-content 1fr; gap: 8px 14px; align-items: start; margin: 8px 0; }
+.legend .srcchip { justify-self: start; }
+.mode-note { padding: 8px 12px; border-radius: 8px; background: var(--soft); color: var(--muted); font-size: 13px; }
+.hint { margin-top: 14px; color: var(--muted); }
+.hint a { color: var(--accent); cursor: pointer; }
+</style>
+</head>
+<body>
+<header>
+  <div class="brand"><span class="logo" aria-hidden="true">F</span><h1 title="FAIR: findable, accessible, interoperable and reusable">FAIR Curation</h1><span class="sub">AI-ready, findable data<span class="on-vast"> · on the VAST Data Platform</span></span></div>
+  <span class="chip mode" id="mode">…</span>
+  <button id="backlog-btn" title="Data already on the system that has no FAIR record">Backlog</button>
+  <div class="menu" id="help-menu">
+    <button id="help-btn" aria-haspopup="true" aria-expanded="false">Help ▾</button>
+    <div class="menu-list" role="menu">
+      <button role="menuitem" data-help="arch">How it works: architecture</button>
+      <button role="menuitem" data-help="review">Reading a review</button>
+      <button role="menuitem" data-help="score">How the FAIR score works</button>
+      <button role="menuitem" data-help="data">The demo datasets</button>
+      <button role="menuitem" data-help="model">Data model and search</button>
+      <button role="menuitem" data-help="prod">Before production</button>
+      <hr>
+      <a role="menuitem" href="/docs" target="_blank">API reference</a>
+    </div>
+  </div>
+  <button id="theme" title="Theme: follow the system, light or dark" aria-label="Theme"></button>
+</header>
+
+<dialog id="help" aria-label="Help">
+  <div class="dlg-head">
+    <button class="tab" data-tab="arch">How it works</button>
+    <button class="tab" data-tab="review">Reading a review</button>
+    <button class="tab" data-tab="score">FAIR score</button>
+    <button class="tab" data-tab="data">Demo data</button>
+    <button class="tab" data-tab="model">Data model</button>
+    <button class="tab" data-tab="prod">Production</button>
+    <button class="x" id="help-close" aria-label="Close" autofocus>Close ✕</button>
+  </div>
+  <div class="dlg-body">
+    <section data-pane="arch">
+      <p class="lead"><b>What is FAIR?</b> Data that is <b>F</b>indable, <b>A</b>ccessible, <b>I</b>nteroperable and <b>R</b>eusable:
+        described in a standard, machine-readable way, with a lasting identifier, so that people and software (including AI and ML
+        tools) can find it, understand it and use it again. It's the international standard for research data, and what funders
+        such as NIH, Horizon Europe and UKRI ask for.</p>
+      <p class="lead">This page is the <b>review step</b> of a pipeline that runs on the VAST Data Platform. Researchers and HPC jobs write folders
+        of data onto VAST over S3 or NFS; a DataEngine function works out what each file is, drafts a metadata record, and waits here for a person
+        to approve it. Approving publishes standard, machine-readable metadata next to the data.</p>
+      <div class="mode-note" id="arch-mode"></div>
+      <div class="arch-wrap">
+      <svg class="arch" viewBox="0 0 1120 752" role="img" aria-label="Architecture. On the left, outside the cluster: a researcher or HPC job, and this portal on Kubernetes, which also searches VAST DB. Inside the VAST cluster: the fair-raw and fair-estate buckets, VAST Catalog, the element trigger and a Kafka topic on the VAST Event Broker, which feed the DataEngine function (profile, curate, publish); below it, what the function writes: a snapshot, VAST DB, the metadata next to the data and the fair-docs bucket. On the right, outside: the LiteLLM model gateway.">
+        <defs>
+          <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="ah" d="M0,0 L10,5 L0,10 z"/></marker>
+          <marker id="ahy" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="ah you" d="M0,0 L10,5 L0,10 z"/></marker>
+        </defs>
+        <!-- left, outside the cluster: who writes data, and this portal -->
+        <rect class="box" x="22" y="60" width="180" height="56" rx="8"/>
+        <text class="t" x="36" y="84">Researcher / HPC job</text>
+        <text class="s" x="36" y="104">writes over S3 or NFSv4</text>
+        <rect class="zone k8s" x="10" y="125" width="204" height="250" rx="12"/>
+        <text class="zl" x="22" y="366">KUBERNETES</text>
+        <rect class="you" x="22" y="135" width="180" height="210" rx="8"/>
+        <text class="t" x="36" y="159">This portal</text>
+        <text class="s" x="36" y="179">(you are here)</text>
+        <text class="s" x="36" y="197">shows each folder's</text>
+        <text class="s" x="36" y="215">_fair/record.json, writes</text>
+        <text class="s" x="36" y="233">your decisions as</text>
+        <text class="s" x="36" y="251">_fair/review.json, lists</text>
+        <text class="s" x="36" y="269">the backlog, searches,</text>
+        <text class="s" x="36" y="287">serves /id/ark:/… pages</text>
+        <!-- the VAST cluster -->
+        <rect class="zone" x="282" y="30" width="621" height="706" rx="12"/>
+        <text class="zl" x="298" y="52">VAST CLUSTER</text>
+        <rect class="box" x="302" y="70" width="190" height="96" rx="8"/>
+        <text class="t" x="316" y="94">fair-raw (S3 + NFS)</text>
+        <text class="s" x="316" y="114">&lt;domain&gt;/&lt;dataset&gt;/</text>
+        <text class="s" x="316" y="132">data, README, CITATION.cff</text>
+        <text class="s" x="316" y="150">_READY when complete</text>
+        <rect class="box" x="302" y="190" width="190" height="62" rx="8"/>
+        <text class="t" x="316" y="214">fair-estate (S3 + NFS)</text>
+        <text class="s" x="316" y="234">data already on VAST</text>
+        <rect class="box" x="302" y="280" width="190" height="62" rx="8"/>
+        <text class="t" x="316" y="304">VAST Catalog</text>
+        <text class="s" x="316" y="324">every file, every 15 min</text>
+        <rect class="box" x="534" y="70" width="190" height="62" rx="8"/>
+        <text class="t" x="548" y="94">Element trigger</text>
+        <text class="s" x="548" y="114">S3 and NFSv4 events</text>
+        <rect class="box" x="534" y="160" width="190" height="62" rx="8"/>
+        <text class="t" x="548" y="184">Kafka topic fair-events</text>
+        <text class="s" x="548" y="204">on the VAST Event Broker</text>
+        <!-- DataEngine: defined and triggered on VAST; its containers run on the linked Kubernetes compute -->
+        <rect class="group" x="302" y="380" width="581" height="185" rx="10"/>
+        <text class="g" x="318" y="398">DATAENGINE · FUNCTION fair-curate</text>
+        <rect class="step" x="318" y="408" width="175" height="118" rx="8"/>
+        <text class="t" x="332" y="432">Profile</text>
+        <text class="s" x="332" y="452">each file as it lands:</text>
+        <text class="s" x="332" y="470">format, header,</text>
+        <text class="s" x="332" y="488">variables, coverage,</text>
+        <text class="s" x="332" y="506">sha256</text>
+        <rect class="step" x="505" y="408" width="175" height="118" rx="8"/>
+        <text class="t" x="519" y="432">Curate</text>
+        <text class="s" x="519" y="452">on _READY: facts</text>
+        <text class="s" x="519" y="470">from headers and docs,</text>
+        <text class="s" x="519" y="488">model proposals for</text>
+        <text class="s" x="519" y="506">descriptive fields</text>
+        <rect class="step" x="692" y="408" width="175" height="118" rx="8"/>
+        <text class="t" x="706" y="432">Publish</text>
+        <text class="s" x="706" y="452">on _fair/review.json:</text>
+        <text class="s" x="706" y="470">snapshot, RO-Crate,</text>
+        <text class="s" x="706" y="488">identifier, score,</text>
+        <text class="s" x="706" y="506">search index</text>
+        <text class="s" x="318" y="552">Containers run on Kubernetes linked to the cluster as DataEngine compute.</text>
+        <!-- what the function writes -->
+        <rect class="box" x="302" y="610" width="136" height="90" rx="8"/>
+        <text class="t" x="316" y="634">Snapshot</text>
+        <text class="s" x="316" y="654">the folder, as</text>
+        <text class="s" x="316" y="672">published</text>
+        <rect class="box" x="450" y="610" width="136" height="90" rx="8"/>
+        <text class="t" x="464" y="634">VAST DB fair-db</text>
+        <text class="s" x="464" y="654">records, files,</text>
+        <text class="s" x="464" y="672">search index,</text>
+        <text class="s" x="464" y="690">variables</text>
+        <rect class="box" x="598" y="610" width="136" height="90" rx="8"/>
+        <text class="t" x="612" y="634">Next to the data</text>
+        <text class="s" x="612" y="654">RO-Crate,</text>
+        <text class="s" x="612" y="672">Croissant,</text>
+        <text class="s" x="612" y="690">preview page</text>
+        <rect class="box" x="746" y="610" width="136" height="90" rx="8"/>
+        <text class="t" x="760" y="634">fair-docs bucket</text>
+        <text class="s" x="760" y="654">landing text for</text>
+        <text class="s" x="760" y="672">RAG search</text>
+        <!-- right, outside: the model gateway -->
+        <rect class="ext" x="940" y="440" width="170" height="76" rx="8"/>
+        <text class="t" x="954" y="464">LiteLLM gateway</text>
+        <text class="s" x="954" y="484">OpenAI-compatible,</text>
+        <text class="s" x="954" y="502" id="arch-model">descriptive fields only</text>
+        <!-- data in, events to DataEngine -->
+        <path class="ln" d="M202,88 H298" marker-end="url(#ah)"/>
+        <path class="ln" d="M492,101 H530" marker-end="url(#ah)"/>
+        <path class="ln" d="M629,132 V156" marker-end="url(#ah)"/>
+        <path class="ln" d="M629,222 V376" marker-end="url(#ah)"/>
+        <path class="ln" d="M397,252 V276" marker-end="url(#ah)"/>
+        <!-- DataEngine to what it writes, and to the model -->
+        <path class="ln" d="M370,565 V606" marker-end="url(#ah)"/>
+        <path class="ln" d="M518,565 V606" marker-end="url(#ah)"/>
+        <path class="ln" d="M666,565 V606" marker-end="url(#ah)"/>
+        <path class="ln" d="M814,565 V606" marker-end="url(#ah)"/>
+        <path class="ln" d="M883,478 H936" marker-end="url(#ah)" marker-start="url(#ah)"/>
+        <!-- the portal: review, curate in place, backlog -->
+        <path class="ln dash" d="M202,150 H298" marker-end="url(#ahy)"/>
+        <text class="s" x="220" y="166">review.json</text>
+        <path class="ln dash" d="M202,221 H298" marker-end="url(#ahy)"/>
+        <text class="s" x="220" y="237">curate</text>
+        <path class="ln" d="M302,311 H206" marker-end="url(#ah)"/>
+        <text class="s" x="220" y="327">backlog</text>
+        <!-- the portal searches VAST DB: vector search on fair.search, and fair.variables -->
+        <path class="ln" d="M112,345 V718 H518 V704" marker-end="url(#ah)"/>
+        <text class="s" x="120" y="600">search:</text>
+        <text class="s" x="120" y="616">vectors and</text>
+        <text class="s" x="120" y="632">variables</text>
+        <!-- step numbers, as in the list below -->
+        <g><circle class="num" cx="245" cy="74" r="10"/><text class="numt" x="241" y="78">1</text></g>
+        <g><circle class="num" cx="512" cy="86" r="10"/><text class="numt" x="508" y="90">2</text></g>
+        <g><circle class="num" cx="647" cy="300" r="10"/><text class="numt" x="643" y="304">3</text></g>
+        <g><circle class="num" cx="536" cy="586" r="10"/><text class="numt" x="532" y="590">4</text></g>
+        <g><circle class="num" cx="245" cy="136" r="10"/><text class="numt" x="241" y="140">5</text></g>
+        <g><circle class="num" cx="684" cy="586" r="10"/><text class="numt" x="680" y="590">6</text></g>
+        <g><circle class="num" cx="112" cy="560" r="10"/><text class="numt" x="108" y="564">7</text></g>
+        <g><circle class="num" cx="245" cy="297" r="10"/><text class="numt" x="241" y="301">8</text></g>
+      </svg>
+      </div>
+      <ol class="steps">
+        <li><b>Upload.</b> A researcher uploads over S3, or an HPC job writes straight into the folder over NFSv4. A
+          <code>_READY</code> file marks the folder complete.</li>
+        <li><b>Event.</b> Every new object, or file written over NFSv4, raises an event. The triggers put it on a Kafka topic
+          hosted on VAST.</li>
+        <li><b>Profile and curate.</b> DataEngine runs <code>fair-curate</code> for each event. It profiles each data file, and when
+          <code>_READY</code> arrives it drafts a record for the folder.</li>
+        <li><b>Record.</b> Facts come from file headers and the researcher's own README and CITATION.cff. The model only proposes
+          descriptive fields. The draft goes to VAST DB and to <code>_fair/record.json</code> in the folder.</li>
+        <li><b>Review, here.</b> You accept, edit or reject what was proposed and supply anything missing. Publishing writes your
+          decisions as <code>_fair/review.json</code>, which raises another event.</li>
+        <li><b>Publish.</b> The function takes a VAST snapshot of the folder (the published bytes, preserved), writes RO-Crate,
+          Croissant and a landing page next to the data, gives the dataset an identifier, and scores it again. Each file gets
+          an HTTP download link that is served only while the file still matches what was published.</li>
+        <li><b>Find.</b> Publishing also indexes the dataset in VAST DB: an embedding in a vector-indexed table
+          (<code>fair.search</code>) for searching by meaning, and one row per variable (<code>fair.variables</code>) for exact
+          questions such as "every dataset with <code>sea_surface_temperature</code>". Press <b>Enter</b> in the search box, or use
+          <i>Find a variable</i>.</li>
+        <li><b>Backlog.</b> Data already on the system is found through <b>VAST Catalog</b>, a periodic snapshot of every
+          file in the namespace. <i>Backlog</i> lists folders that hold data but have no FAIR record (dark data), with size,
+          formats and any docs. <i>Curate</i> drops a <code>_READY</code> marker, and the same function curates the folder in
+          place. The estate bucket <code>fair-estate</code> is shared over S3 and NFS.</li>
+      </ol>
+    </section>
+    <section data-pane="review" hidden>
+      <p class="lead">Every field shows where its value came from, so you can tell at a glance what to trust and what to check.</p>
+      <div class="legend">
+        <span class="srcchip s-header">From the file</span><span>Stated in the file's own header (NetCDF/ACDD attributes, FITS keywords, VCF meta lines). Accepted as is.</span>
+        <span class="srcchip s-companion">From the researcher's docs</span><span>Taken from README, CITATION.cff or LICENSE in the folder. Accepted as is.</span>
+        <span class="srcchip s-inferred">Proposed by the model</span><span>Inferred from the facts above, with the model's own confidence (bar) and the evidence it used. Needs your accept or edit.</span>
+        <span class="srcchip s-human">Entered by a person</span><span>A value you typed. It overrides everything else and is recorded with your name.</span>
+        <span class="srcchip s-none">Not found</span><span>Nothing in the data or documents says this. Only a person can supply it.</span>
+      </div>
+      <h3>What the model may and may not do</h3>
+      <p>It may propose a title, description, keywords, domain, technique, instrument, coverage and variable meanings. It never
+        proposes <b>creators, licence, publisher or identifiers</b>, because a wrong guess there is worse than none. Its confidence is
+        capped at 0.9, so a guess never looks as sure as a fact.</p>
+      <h3>When you can publish</h3>
+      <p>Publishing needs an accepted <b>title, description, licence and creators</b>; RO-Crate itself requires a licence. Until then
+        the Publish button stays disabled and the panel says what is missing. When you publish, any proposal you left alone is
+        accepted as shown.</p>
+      <h3>Duplicates</h3>
+      <p>If the same files (by checksum) already sit in another folder, the review says so, so a copy is not published twice.</p>
+    </section>
+    <section data-pane="prod" hidden>
+      <p class="lead">This is a demo. Its guardrails are real, but they aren't everything production needs. What it does
+        today, and what to add first:</p>
+      <div class="table-wrap" style="overflow-x:auto"><table>
+        <thead><tr><th>Area</th><th>In the demo</th><th>Needed for production</th></tr></thead>
+        <tbody>
+          <tr><td>Model scope</td><td>Proposes descriptive fields only; never licence, creators, identifiers or dates. Confidence capped at 0.9.</td><td>Keep the boundary, and add the items below; the boundary limits which fields the model touches, not whether its values are right.</td></tr>
+          <tr><td>Untrusted input</td><td>File headers and README/CITATION text go into the prompt as facts.</td><td>Delimit them as data, cap their length, validate output against a schema, and flag proposals that only restate a document's claims (prompt injection).</td></tr>
+          <tr><td>Where data goes</td><td>Names, header values and README text are sent to the model gateway.</td><td>Open data: fine. Embargoed, personal or export-controlled data: an on-site model, classification before any prompt, and redaction.</td></tr>
+          <tr><td>Confidence</td><td>The model's own estimate; one real error (simulation read as collision data) was at 0.7.</td><td>Calibrate on a larger labelled set, per field and domain, before any automatic acceptance.</td></tr>
+          <tr><td>Vocabularies</td><td>Keywords and domain are free text; CF standard names come from the files.</td><td>Map keywords and domains to GCMD, EDAM, PhySH (or the community's own) with identifiers, validated rather than generated.</td></tr>
+          <tr><td>Provenance</td><td>The model name and the curation software are recorded.</td><td>Record the model version, prompt version and settings per proposal, so any record can be explained and re-created.</td></tr>
+          <tr><td>Quality over time</td><td>An accuracy scorecard against ground truth, and F-UJI, run by hand.</td><td>Re-run both on every model or prompt change and on a schedule; alert on drops.</td></tr>
+          <tr><td>Reviewers</td><td>A typed name.</td><td>Sign-in (SSO or ORCID), roles for curators and data owners, and every decision tied to a person.</td></tr>
+          <tr><td>Facts mapping</td><td>Header-to-field rules written for six formats.</td><td>Review by a domain expert for each format and community convention in use.</td></tr>
+          <tr><td>Identifiers</td><td>Test ARKs (ark:/99999/fk4…) resolved by the portal.</td><td>DataCite DOIs (or the institution's PID service), with landing pages on a stable public host.</td></tr>
+          <tr><td>Access</td><td>Open datasets; files served from S3 through the portal.</td><td>Restricted data: access conditions in the record, authorisation at download, and metadata-only publication where needed.</td></tr>
+          <tr><td>Preservation</td><td>A VAST snapshot per publication, not locked.</td><td>Locked (indestructible) snapshots or replication, with a retention policy.</td></tr>
+          <tr><td>Scale</td><td>The function downloads whole files; search uses VAST DB's vector index.</td><td>Header-only or ranged reads for large files.</td></tr>
+          <tr><td>Operations</td><td>One portal replica; a personal model key.</td><td>A service-account key, more than one replica, monitoring of the pipeline, dead-letter topic and Catalog runs, and backups of fair-db.</td></tr>
+          <tr><td>Catalogue of catalogues</td><td>One site's catalog, searchable in its own portal.</td><td>Each site publishes a DCAT-AP feed of its published records; a central service harvests the feeds into the same tables with a site column, re-embeds them with one model so search ranks across sites, and links back to each site for access.</td></tr>
+        </tbody>
+      </table></div>
+      <p class="hint">The same list, with more detail, is in <code>docs/PRODUCTION.md</code> in the repository.</p>
+    </section>
+    <section data-pane="model" hidden>
+      <p class="lead">What the pipeline stores, what it embeds for search, and how a record becomes standard metadata.</p>
+      <h3>A record's fields</h3>
+      <p>Every field in a record carries five things: its <b>value</b>, its <b>source</b> (<code>header</code>, <code>companion</code>,
+        <code>inferred</code>, <code>human</code> or <code>none</code>), the <b>evidence</b> (for example <code>oisst.nc#summary</code>
+        or <code>CITATION.cff</code>), a <b>confidence</b> from 0 to 1, and a <b>status</b> (<code>accepted</code>, <code>proposed</code>,
+        <code>rejected</code> or <code>missing</code>). Values from file headers and the researchers' documents are accepted as they are.</p>
+      <div class="table-wrap" style="overflow-x:auto"><table>
+        <thead><tr><th>Fields</th><th>Who may supply them</th></tr></thead>
+        <tbody>
+          <tr><td>title, description, keywords, domain, measurementTechnique, instrument, temporalCoverage, spatialCoverage, variable descriptions</td>
+            <td>The data, the researchers' documents, or the model as a proposal. Model confidence is capped at 0.9; variable descriptions below 0.4 are dropped.</td></tr>
+          <tr><td>creators, license, publisher, identifier, datePublished, version, funding</td>
+            <td>Only the data, the researchers' documents, or a person. Never the model.</td></tr>
+          <tr><td>title, description, license, creators</td>
+            <td>Required before publishing (RO-Crate itself requires a licence).</td></tr>
+        </tbody>
+      </table></div>
+      <h3>Search by meaning</h3>
+      <p>Each published dataset gets one embedding from <b id="dm-model">the embedding model</b> (<span id="dm-dims">1024</span> dimensions),
+        scaled to unit length and stored in a vector-indexed column of <code>fair.search</code> (squared L2 distance, which ranks exactly
+        like cosine similarity on unit vectors). The text embedded is one passage, in this order: title, description,
+        <code>Keywords:</code>, <code>Domain:</code>, technique, instrument, temporal and spatial coverage, then
+        <code>Variables:</code> each name with its description and CF standard name. The passage is cut at
+        <span id="dm-chars">1,200</span> characters, because some embedding servers reject longer inputs, so the most important text comes first.
+        A query is embedded with a short search instruction in front, as the model expects. Each result's score is its cosine
+        similarity, plus up to 0.10 for query words found in its title, keywords, domain or description. Below 0.35 the portal
+        says there's no strong match.</p>
+      <p>VAST DB's vector index answers the query. If the Query Engine is unavailable, the portal reads the same stored vectors
+        with a plain select and ranks them itself. Each result says which engine answered.</p>
+      <h3>Find a variable</h3>
+      <p>An exact lookup rather than a semantic one, over <code>fair.variables</code>: name, CF standard name, units and description,
+        case-insensitive, with underscores and spaces treated alike. An exact CF standard-name match ranks first.</p>
+      <h3>VAST DB tables (bucket fair-db, schema fair)</h3>
+      <div class="table-wrap" style="overflow-x:auto"><table>
+        <thead><tr><th>Table</th><th>One row per</th><th>Columns</th></tr></thead>
+        <tbody>
+          <tr><td><code>files</code></td><td>data file, as it lands</td><td>folder, key, name, size, sha256, format, media_type, profile (JSON: header attributes, variables, coverage), profiled_at</td></tr>
+          <tr><td><code>records</code></td><td>record version (append-only: the audit trail)</td><td>folder, version, status, title, domain, pid, score_before, score_after, record (JSON), actor, updated_at</td></tr>
+          <tr><td><code>search</code></td><td>published dataset</td><td>folder, pid, title, domain, keywords, description, updated_at, embedding (FLOAT[1024], vector-indexed)</td></tr>
+          <tr><td><code>variables</code></td><td>variable of a published dataset</td><td>folder, pid, dataset_title, name, units, standard_name, description, source</td></tr>
+        </tbody>
+      </table></div>
+      <h3>From record to standard metadata</h3>
+      <div class="table-wrap" style="overflow-x:auto"><table>
+        <thead><tr><th>Record</th><th>RO-Crate 1.1 (schema.org)</th><th>Croissant 1.0</th></tr></thead>
+        <tbody>
+          <tr><td>title, description, keywords</td><td>name, description, keywords</td><td>name, description, keywords</td></tr>
+          <tr><td>creators, publisher</td><td>creator (Person or Organization, ORCID as @id), publisher</td><td>creator, citeAs</td></tr>
+          <tr><td>license</td><td>license → SPDX URL; open licences add conditionsOfAccess and isAccessibleForFree</td><td>license</td></tr>
+          <tr><td>variables</td><td>variableMeasured: PropertyValue (name, description, unitText, propertyID = CF standard-name URL)</td><td>recordSet fields (tabular files)</td></tr>
+          <tr><td>domain, technique, instrument, coverage</td><td>about, measurementTechnique, instrument, temporalCoverage, spatialCoverage</td><td>—</td></tr>
+          <tr><td>files</td><td>File: contentUrl (HTTP), sameAs (S3), sha256, contentSize, encodingFormat</td><td>FileObject: contentUrl, sha256, encodingFormat</td></tr>
+          <tr><td>snapshot, identifier, provenance</td><td>archivedAt (VAST snapshot), identifier (ARK), CreateAction by the curator software and model</td><td>identifier, url</td></tr>
+        </tbody>
+      </table></div>
+    </section>
+    <section data-pane="data" hidden>
+      <p class="lead">Six real, openly licensed datasets, one per file format, so the readers visibly cover different sciences.
+        Every licence allows commercial use. Each documented folder comes with a short README and a CITATION.cff; four domains
+        also have a <b>dark</b> copy: the same bytes, renamed, with no documents at all.</p>
+      <div class="table-wrap" style="overflow-x:auto"><table>
+        <thead><tr><th>Domain</th><th>What it is</th><th>Format</th><th>Licence</th><th>Folders</th></tr></thead>
+        <tbody>
+          <tr><td>Climate</td><td>NOAA/NCEI OISST v2.1: daily sea surface temperature on a global quarter-degree grid, from AVHRR satellite data blended with ships, buoys and Argo floats; 1 September 2024. Variables sst, anom, err, ice.</td><td>NetCDF-4 (CF, ACDD)</td><td>CC0 / US Government</td><td>oisst-v2.1-2024-09-01 · dark: scratch-run-0901</td></tr>
+          <tr><td>Astronomy</td><td>TESS sector 1 two-minute light curve of TIC 261136679 (the star pi Mensae), 25 July – 22 August 2018: SAP and PDCSAP flux, quality flags and centroids.</td><td>FITS</td><td>Public domain (MAST)</td><td>tess-s0001-tic261136679</td></tr>
+          <tr><td>Particle physics</td><td>CMS simulation (not collision data) of a 125 GeV Higgs decaying to ZZ and four leptons at 8 TeV, reduced to a flat ntuple: 299,973 events, 32 branches (muons, electrons, vertices, missing energy). CERN Open Data record 12361.</td><td>ROOT</td><td>CC0</td><td>cms-higgs-zz-4l-8tev · dark: user-skims-07</td></tr>
+          <tr><td>Genomics</td><td>gnomAD v2.1.1 exome sites for chromosome 21 (GRCh37): the full header and the first 3,323 variants. Aggregate allele frequencies from 125,748 exomes; no individual genotypes.</td><td>VCF (bgzip)</td><td>CC0</td><td>gnomad-v2.1.1-exomes-chr21-slice</td></tr>
+          <tr><td>Bioimaging</td><td>BBBC039v1: Hoechst-stained nuclei of U2OS cells from a chemical screen, fluorescence microscopy, three fields of view (16-bit, 696 × 520 px), acquired March 2010.</td><td>TIFF (MetaMorph)</td><td>CC0</td><td>bbbc039-u2os-nuclei-sample · dark: plate-br21381-export</td></tr>
+          <tr><td>Public sector</td><td>UK Department for Transport annual average daily traffic flow by count point for Wales, 2000–2025: 37,338 rows by vehicle class.</td><td>CSV</td><td>Open Government Licence v3</td><td>dft-aadf-wales · dark: export-2025-q3</td></tr>
+        </tbody>
+      </table></div>
+      <h3>Why the dark copies</h3>
+      <p>A self-describing format still says a lot with no documents: the dark NetCDF copy keeps its title, keywords and
+        coverage from its header. A dark CSV or TIFF says almost nothing, so the model can describe it but can't publish it:
+        licence and creators have to come from a person. The duplicate warning also flags each dark copy as the same bytes as
+        its documented twin.</p>
+      <h3>Where the facts come from</h3>
+      <p>Each file's source, checksum and licence evidence, with the attribution it needs, is in <code>data/SOURCES.md</code>
+        in the repository. <code>data/ground_truth.json</code> records what is actually true about each folder, and the
+        accuracy scorecard grades the pipeline's drafts against it.</p>
+    </section>
+    <section data-pane="score" hidden>
+      <p class="lead">The FAIR score is computed by fixed rules, not by a model: the same record always gets the same score, and
+        every point traces to one check.</p>
+      <p>There are 18 checks keyed to the <b>RDA FAIR Data Maturity Model</b> indicators (as the F-UJI assessor reads them), grouped
+        into Findable, Accessible, Interoperable and Reusable. Some count double, such as a persistent identifier or a recognised
+        licence. Each principle's score is the share of its weight that passes; the total is the share overall.</p>
+      <h3>Before and after</h3>
+      <ul>
+        <li><b>Before</b> is the folder as it arrived: only what its files and documents already state, with no model and no
+          publishing.</li>
+        <li><b>On publish</b> is the score once your review is applied and the dataset is published. It updates live as you
+          accept or edit fields.</li>
+      </ul>
+      <p>Some checks can only pass at publish: a persistent identifier, a landing page that outlives the data, a catalog entry, and
+        formal JSON-LD metadata (RO-Crate and Croissant). That is why a well-documented folder still scores well below 100 before
+        publishing.</p>
+      <p>The checks for the open dataset are listed under <i>FAIR checks</i> on the review screen, with ✓ for passed and ○ for not yet.</p>
+    </section>
+  </div>
+</dialog>
+<main>
+  <section class="side">
+    <div class="panel">
+      <h2>Add a dataset</h2>
+      <div class="search"><input type="text" id="folder" placeholder="domain/dataset-name, e.g. climate/my-run"></div>
+      <div class="drop" id="drop">Drop data files and docs here</div>
+      <details class="try">
+        <summary>No data to hand? Try one of these</summary>
+        <p>Download a file, then drop it here on its own. Without a README or licence it's dark data: the model
+          describes it, but publishing waits for a person to add the licence and creators.</p>
+        <ul>
+          <li><a href="https://www.ncei.noaa.gov/data/sea-surface-temperature-optimum-interpolation/v2.1/access/avhrr/202409/oisst-avhrr-v02r01.20240901.nc" target="_blank" rel="noopener">NOAA OISST sea surface temperature</a>
+            <span>NetCDF · 1.5 MB · CC0 · <a href="https://www.ncei.noaa.gov/products/optimum-interpolation-sst" target="_blank" rel="noopener">about</a></span></li>
+          <li><a href="https://mast.stsci.edu/api/v0.1/Download/file?uri=mast:TESS/product/tess2018206045859-s0001-0000000261136679-0120-s_lc.fits" target="_blank" rel="noopener">TESS light curve, sector 1</a>
+            <span>FITS · 2 MB · public domain · <a href="https://archive.stsci.edu/missions-and-data/tess" target="_blank" rel="noopener">about</a></span></li>
+          <li><a href="https://storage.googleapis.com/dft-statistics/road-traffic/downloads/aadf/region_id/dft_aadf_region_id_4.csv" target="_blank" rel="noopener">DfT road traffic counts, Wales</a>
+            <span>CSV · 8 MB · OGL v3 · <a href="https://roadtraffic.dft.gov.uk/regions/4" target="_blank" rel="noopener">about</a></span></li>
+          <li><a href="https://opendata.cern.ch/eos/opendata/cms/derived-data/AOD2NanoAODOutreachTool/ForHiggsTo4Leptons/SMHiggsToZZTo4L.root" target="_blank" rel="noopener">CMS Higgs → ZZ → 4ℓ simulation</a>
+            <span>ROOT · 42 MB · CC0 · <a href="https://opendata.cern.ch/record/12361" target="_blank" rel="noopener">about</a></span></li>
+          <li>Larger collections to pick from: <a href="https://gnomad.broadinstitute.org/downloads#v2" target="_blank" rel="noopener">gnomAD</a>
+            (VCF, CC0) and <a href="https://bbbc.broadinstitute.org/BBBC039" target="_blank" rel="noopener">BBBC039</a> (TIFF, CC0).</li>
+        </ul>
+      </details>
+    </div>
+    <div class="panel">
+      <h2>Find a variable</h2>
+      <div class="search vsearch"><input type="search" id="vq" autocomplete="off" placeholder="e.g. sea_surface_temperature, pt, Celsius">
+        <div class="suggest" id="vsuggest" hidden></div></div>
+    </div>
+    <div class="panel grow">
+      <h2>Datasets</h2>
+      <div class="search"><input type="search" id="q" placeholder="Filter, or press Enter to search by meaning…"></div>
+      <div class="searchnote" id="searchnote"><span>Type to filter · <b>Enter</b> to search by meaning</span></div>
+      <div class="pending" id="pending"></div>
+      <div class="list" id="list"></div>
+    </div>
+    <div class="panel activity">
+      <h2>Pipeline activity</h2>
+      <div class="log" id="log">No events yet.</div>
+    </div>
+  </section>
+  <section class="panel"><div id="detail"><div class="empty">Select a dataset to review it.
+    <div class="hint">New here? <a data-help="arch">See how it works</a>.</div></div></div></section>
+</main>
+<script>
+const SRC = {header: "From the file", companion: "From the researcher's docs", inferred: "Proposed by the model",
+             human: "Entered by a person", none: "Not found"};
+const ORDER = ["title", "description", "keywords", "creators", "license", "domain", "measurementTechnique", "instrument",
+               "temporalCoverage", "spatialCoverage", "publisher", "identifier", "datePublished", "version", "citation",
+               "isBasedOn", "conformsTo", "encodingFormat"];
+const LICENSES = ["", "CC0-1.0", "CC-BY-4.0", "OGL-UK-3.0", "ODC-By-1.0", "PDDL-1.0", "CC-BY-SA-4.0", "CC-BY-NC-4.0"];
+let all = [], current = null, decisions = {}, varDecisions = {};
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;"}[c]));
+const show = v => v == null ? "" : Array.isArray(v) ? v.map(x => typeof x === "object" ? (x.name || JSON.stringify(x)) : x).join(", ")
+                                 : typeof v === "object" ? JSON.stringify(v) : String(v);
+
+async function api(path, opts) { const r = await fetch(path, opts); if (!r.ok) throw new Error(await r.text()); return r.json(); }
+
+async function refresh() {
+  const d = await api("/api/datasets");
+  all = d.datasets;
+  $("#pending").textContent = d.pending.length ? "Arriving / curating: " + d.pending.join(", ") : "";
+  renderList();
+  updateBacklog();
+  const lg = await api("/api/log");
+  if (lg.log.length) $("#log").innerHTML = lg.log.slice().reverse().map(l => `<div>${l.t} ${esc(l.msg)}</div>`).join("");
+  if (current) {
+    const s = all.find(x => x.folder === current.folder);
+    if (s && s.status !== current.status) open(current.folder);
+  }
+}
+
+let semantic = null;  // {query, engine, results} while showing search-by-meaning results
+
+async function searchMeaning() {
+  const q = $("#q").value.trim();
+  if (!q) { semantic = null; renderList(); return; }
+  $("#searchnote").innerHTML = `<span>Searching by meaning…</span>`;
+  try {
+    const d = await api(`/api/search?q=${encodeURIComponent(q)}`);
+    semantic = {query: q, engine: d.engine, results: d.results, degraded: d.degraded};
+  } catch (e) {
+    semantic = null;
+    $("#searchnote").innerHTML = `<span>Search unavailable: ${esc(String(e.message).slice(0, 160))}</span>`;
+    return;
+  }
+  renderList();
+}
+
+function renderList() {
+  if (semantic) {
+    // Qwen3-Embedding: right answers score ~0.4-0.6 here, unrelated datasets ~0.2-0.3.
+    const weak = !semantic.results.length || semantic.results[0].similarity < 0.35;
+    // The engine's name, short; why (e.g. the query engine's refusal) is in the tooltip.
+    const [eng, ...why] = String(semantic.engine || "").split(" (");
+    const engine = `<span class="eng" title="${esc(semantic.engine)}">${esc(eng.replace(/:.*/, ""))}${why.length ? " ⓘ" : ""}</span>`;
+    $("#searchnote").innerHTML = semantic.degraded
+      ? `<span>Words matched for “${esc(semantic.query)}”, not meaning · ${engine}</span><a id="clearsem">Clear</a>`
+      : `<span>${weak ? "No strong match; closest" : "By meaning"} for “${esc(semantic.query)}” · ${engine}</span><a id="clearsem">Clear</a>`;
+    $("#clearsem").onclick = () => { semantic = null; $("#q").value = ""; renderList(); };
+    $("#list").innerHTML = semantic.results.map(r => `
+      <div class="item ${current && current.folder === r.folder ? "sel" : ""}" data-f="${esc(r.folder)}">
+        <div class="t">${esc(r.title || r.folder)}</div>
+        <div class="m"><span class="sim" title="match: meaning ${r.meaning ?? r.similarity}, plus words matched ${Math.round((r.words || 0) * 100)}%"><i><b style="width:${Math.round(r.similarity * 100)}%"></b></i>${r.similarity.toFixed(2)}</span>
+          <span>${esc(r.domain || "")}</span><span>${esc(r.pid || "")}</span></div>
+      </div>`).join("") || `<div class="empty">Nothing published matches that yet.</div>`;
+    document.querySelectorAll(".item").forEach(el => el.onclick = () => open(el.dataset.f));
+    return;
+  }
+  $("#searchnote").innerHTML = `<span>Type to filter · <b>Enter</b> to search by meaning</span>`;
+  const q = $("#q").value.toLowerCase().trim();
+  const rows = all.filter(r => !q || [r.title, r.description, r.domain, r.folder, ...(r.keywords || [])].join(" ").toLowerCase().includes(q));
+  $("#list").innerHTML = rows.map(r => `
+    <div class="item ${current && current.folder === r.folder ? "sel" : ""}" data-f="${esc(r.folder)}">
+      <div class="t">${esc(r.title || r.name)}</div>
+      <div class="m"><span class="chip st-${r.status}">${r.status.replace("-", " ")}</span>
+        <span>${esc(r.domain || "")}</span>
+        <span class="score">FAIR ${r.score_before ?? "–"}${r.score_after != null ? " → " + r.score_after : ""}</span></div>
+      ${r.missing.length && r.status !== "published" ? `<div class="needs">Needs ${esc(r.missing.map(label).join(", ").toLowerCase())}</div>` : ""}
+    </div>`).join("") || `<div class="empty">No datasets yet.</div>`;
+  document.querySelectorAll(".item").forEach(el => el.onclick = () => open(el.dataset.f));
+}
+
+async function open(folder) {
+  const d = await api(`/api/datasets/${folder}/record`);
+  current = {folder, status: d.record.status, record: d.record};
+  decisions = {}; varDecisions = {};
+  renderList();
+  renderDetail(d.record, d.score);
+  if (d.record.status !== "published") preview();
+}
+
+function editor(name, f) {
+  const v = f.value;
+  if (name === "license") return `<select data-edit="${name}">${LICENSES.map(l => `<option ${l === v ? "selected" : ""}>${l}</option>`).join("")}</select>`;
+  if (name === "description") return `<textarea data-edit="${name}">${esc(v)}</textarea>`;
+  if (name === "creators") return `<input type="text" data-edit="${name}" value="${esc(show(v).replaceAll(", ", "; "))}" placeholder="Name; Name; Organisation">`;
+  return `<input type="text" data-edit="${name}" value="${esc(show(v))}">`;
+}
+
+function renderDetail(r, score) {
+  const published = r.status === "published";
+  const names = [...ORDER.filter(k => r.fields[k]), ...Object.keys(r.fields).filter(k => !ORDER.includes(k))];
+  const rows = names.map(k => {
+    const f = r.fields[k];
+    const editable = !published && !["encodingFormat", "conformsTo"].includes(k);
+    const c = Math.round((f.confidence || 0) * 100);
+    const color = f.source === "inferred" ? "var(--inferred)" : f.source === "none" ? "var(--none)" : "var(--good)";
+    const text = show(f.value), long = text.length > 320;
+    return `<tr data-row="${k}">
+      <td class="f" title="${k}">${label(k)}</td>
+      <td class="v">${editable && f.status !== "accepted" ? editor(k, f)
+        : `<div class="val${long ? " clamp" : ""}">${esc(text) || `<span class="sub">—</span>`}</div>${long ? `<button class="link more">Show more</button>` : ""}`}</td>
+      <td class="src"><span class="srcchip s-${f.source}">${SRC[f.source] || f.source}</span>
+        ${f.evidence ? `<div class="ev">${evidence(f.evidence)}</div>` : ""}
+        ${f.source === "inferred" ? `<div class="conf" title="model confidence"><span><i style="width:${c}%;background:${color}"></i></span>${c}%</div>` : ""}</td>
+      <td class="act">${editable && f.status !== "accepted" ? `<span class="seg"><button data-a="accept" data-k="${k}">Accept</button><button data-a="reject" data-k="${k}">Reject</button></span>`
+                       : `<span class="chip st-${f.status}">${f.status === "accepted" ? "✓ " : ""}${f.status}</span>`}</td></tr>`;
+  }).join("");
+  const inferredVars = r.variables.filter(v => v.description);
+  const varRows = r.variables.slice(0, 120).map(v => {
+    const d = v.description;
+    return `<tr><td class="f">${esc(v.name)}</td><td>${esc(v.long_name || (d && d.value) || "")}${v.units ? ` <span class="chip">${esc(v.units)}</span>` : ""}${v.standard_name ? ` <span class="chip">${esc(v.standard_name)}</span>` : ""}</td>
+      <td class="src">${d ? `<span class="srcchip s-inferred">${SRC.inferred}</span>` : v.long_name || v.standard_name ? `<span class="srcchip s-header">${SRC.header}</span>` : ""}</td>
+      <td class="act">${d && !published && d.status === "proposed" ? `<span class="seg"><button data-va="accepted" data-v="${esc(v.name)}">Accept</button><button data-va="rejected" data-v="${esc(v.name)}">Reject</button></span>` : d ? `<span class="chip st-${d.status}">${d.status}</span>` : ""}</td></tr>`;
+  }).join("");
+  $("#detail").innerHTML = `<div class="detail">
+    <div class="top">
+      <div><h2>${esc((r.fields.title || {}).value || r.name)}</h2>
+        <div class="path">${esc(r.folder)} · ${r.files.length} file(s) · curated ${esc(r.generated)}</div></div>
+      <div class="scores">
+        <div class="big"><b>${r.score_before ?? "–"}</b><span>Before</span></div>
+        <div class="big after"><b id="s-after">${r.score_after ?? "…"}</b><span>${published ? "Published" : "On publish"}</span></div>
+      </div>
+    </div>
+    <div class="fair" id="fair">${fairBars(score)}</div>
+    <div id="call"></div>
+    ${r.duplicates ? `<div class="callout">The same files are already in <b>${esc(r.duplicates.join(", "))}</b>. Check whether this is a copy before publishing it again.</div>` : ""}
+    ${published ? `<div class="callout ok">Published as <b>${esc(r.pid)}</b>. <span class="links">
+        <a href="/id/${esc(r.pid)}" target="_blank">Landing page</a>
+        <a href="/id/${esc(r.pid)}/ro-crate-metadata.json" target="_blank">RO-Crate</a>
+        <a href="/id/${esc(r.pid)}/croissant.json" target="_blank">Croissant</a></span></div>` : ""}
+    <div class="section-title">Metadata</div>
+    <table class="fields"><thead><tr><th>Field</th><th>Value</th><th>Where it came from</th><th></th></tr></thead><tbody>${rows}</tbody></table>
+    <details ${inferredVars.length && !published ? "open" : ""}><summary>Variables <span class="chip">${r.variables.length}</span>${inferredVars.length ? `<span class="sub">${inferredVars.length} described by the model</span>` : ""}</summary>
+      <table class="vars"><tbody>${varRows}</tbody></table></details>
+    <details open><summary>FAIR checks</summary><div class="checks" id="checks">${checks(score)}</div></details>
+    ${published ? "" : `<div class="pubbar"><label for="reviewer">Reviewer</label><input type="text" id="reviewer" placeholder="your name or ORCID" value="${esc(localStorage.getItem("reviewer") || "")}">
+      <button class="primary" id="publish">Publish</button><span id="pubmsg" class="sub"></span></div>`}
+  </div>`;
+  document.querySelectorAll("[data-a]").forEach(b => b.onclick = () => decide(b.dataset.k, b.dataset.a));
+  document.querySelectorAll("[data-va]").forEach(b => b.onclick = () => { varDecisions[b.dataset.v] = b.dataset.va; mark(b, b.dataset.va === "accepted"); preview(); });
+  document.querySelectorAll("[data-edit]").forEach(el => el.oninput = () => { decisions[el.dataset.edit] = {action: "edit", value: parse(el.dataset.edit, el.value)}; highlight(el.dataset.edit, "edit"); preview(); });
+  document.querySelectorAll("#detail .more").forEach(b => b.onclick = () => {
+    const v = b.previousElementSibling; v.classList.toggle("clamp"); b.textContent = v.classList.contains("clamp") ? "Show more" : "Show less"; });
+  document.querySelectorAll("#detail textarea").forEach(t => { const fit = () => { t.style.height = "auto"; t.style.height = t.scrollHeight + 2 + "px"; };
+    fit(); t.addEventListener("input", fit); });
+  const pb = $("#publish"); if (pb) pb.onclick = publish;
+}
+// Field names as people say them; the schema.org name stays in the tooltip.
+const LABELS = {license: "Licence", measurementTechnique: "Measurement technique", temporalCoverage: "Temporal coverage",
+  spatialCoverage: "Spatial coverage", datePublished: "Date published", conformsTo: "Conforms to", encodingFormat: "Encoding format",
+  isBasedOn: "Based on", sameAs: "Same as"};
+const label = k => LABELS[k] || (k[0].toUpperCase() + k.slice(1).replace(/([a-z])([A-Z])/g, "$1 $2").toLowerCase());
+// "file.nc#attr" reads as the attribute, in the file; anything else as written.
+function evidence(e) {
+  const m = /^(\S+?\.\w+)#(\S+)$/.exec(e);
+  return m ? `<code>${esc(m[2])}</code> in <span class="file" title="${esc(m[1])}">${esc(m[1])}</span>` : esc(e);
+}
+
+function parse(name, v) {
+  if (name === "keywords" || name === "isBasedOn" || name === "citation") return v.split(",").map(s => s.trim()).filter(Boolean);
+  if (name === "creators") return v.split(";").map(s => s.trim()).filter(Boolean).map(n => ({name: n}));
+  return v;
+}
+
+function decide(k, action) {
+  const f = current.record.fields[k];
+  const el = document.querySelector(`[data-edit="${k}"]`);
+  const edited = el && show(f.value).replaceAll(", ", k === "creators" ? "; " : ", ") !== el.value;
+  decisions[k] = action === "accept" && edited ? {action: "edit", value: parse(k, el.value)} : {action};
+  highlight(k, action);
+  preview();
+}
+
+function highlight(k, action) {
+  document.querySelectorAll(`[data-k="${k}"]`).forEach(b => b.className = (b.dataset.a === action || (action === "edit" && b.dataset.a === "accept")) ? (b.dataset.a === "accept" ? "on" : "off") : "");
+  const tr = document.querySelector(`tr[data-row="${k}"]`);
+  if (tr) { tr.classList.toggle("decided-accept", action !== "reject"); tr.classList.toggle("decided-reject", action === "reject"); }
+}
+function mark(btn, ok) { btn.parentElement.querySelectorAll("button").forEach(b => b.className = ""); btn.className = ok ? "on" : "off"; }
+
+function fairBars(s) {
+  const label = {F: "Findable", A: "Accessible", I: "Interoperable", R: "Reusable"};
+  return "FAIR".split("").map(p => `<div><span>${label[p]}</span><b class="score">${s.by_principle[p]}</b><div class="bar"><i style="width:${s.by_principle[p]}%"></i></div></div>`).join("");
+}
+function checks(s) {
+  return s.checks.map(c => `<div class="check"><span class="${c.pass ? "ok" : "no"}">${c.pass ? "✓" : "○"}</span>
+    <span>${esc(c.label)} <code>${c.id}</code>${!c.pass && c.hint ? ` <code>· ${esc(c.hint)}</code>` : ""}</span></div>`).join("");
+}
+
+let pending;
+function preview() {
+  clearTimeout(pending);
+  pending = setTimeout(async () => {
+    const p = await api(`/api/datasets/${current.folder}/preview`, {method: "POST", headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({decisions, variables: varDecisions})});
+    $("#s-after").textContent = p.on_publish.total;
+    $("#fair").innerHTML = fairBars(p.on_publish);
+    $("#checks").innerHTML = checks(p.on_publish);
+    $("#call").innerHTML = p.missing.length
+      ? `<div class="callout">Needs a person before it can be published: <b>${p.missing.join(", ")}</b>. These are never guessed: they must come from the data, the researchers' documents, or you.</div>` : "";
+    const pb = $("#publish"); if (pb) pb.disabled = p.missing.length > 0;
+  }, 150);
+}
+
+async function publish() {
+  const reviewer = $("#reviewer").value.trim() || "reviewer";
+  localStorage.setItem("reviewer", reviewer);
+  // Accepting at publish: anything still proposed that the reviewer left alone is accepted as shown.
+  for (const [k, f] of Object.entries(current.record.fields)) if (f.status === "proposed" && !decisions[k]) decisions[k] = {action: "accept"};
+  for (const v of current.record.variables) if (v.description && v.description.status === "proposed" && !varDecisions[v.name]) varDecisions[v.name] = "accepted";
+  $("#publish").disabled = true; $("#pubmsg").textContent = "Sent to the pipeline…";
+  await api(`/api/datasets/${current.folder}/review`, {method: "POST", headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({reviewer, decisions, variables: varDecisions})});
+}
+
+const drop = $("#drop");
+drop.ondragover = e => { e.preventDefault(); drop.classList.add("hot"); };
+drop.ondragleave = () => drop.classList.remove("hot");
+drop.ondrop = async e => {
+  e.preventDefault(); drop.classList.remove("hot");
+  const folder = $("#folder").value.trim();
+  if (!/^[\w.-]+\/[\w.-]+$/.test(folder)) { drop.textContent = "Name the folder first: domain/dataset-name"; return; }
+  // Chunked (S3 multipart through the portal): 5 MB parts, each retried, so large files survive a flaky network.
+  const json = (url, body) => api(url, {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(body)});
+  const files = [...e.dataTransfer.files];
+  for (const [i, f] of files.entries()) {
+    const key = `${folder}/${f.name}`;
+    const st = await json("/api/upload/start", {bucket: "fair-raw", key});
+    const parts = [];
+    for (let n = 1, off = 0; off < f.size || n === 1; n++, off += st.part_size) {
+      drop.textContent = `Uploading ${f.name} (${i + 1}/${files.length}) · ${Math.min(100, Math.round(off / Math.max(f.size, 1) * 100))}%`;
+      const q = new URLSearchParams({bucket: "fair-raw", key, upload_id: st.upload_id, n});
+      let res, tries = 0;
+      while (true) {
+        try { res = await api(`/api/upload/part?${q}`, {method: "PUT", body: f.slice(off, off + st.part_size)}); break; }
+        catch (err) { if (++tries >= 5) throw err; await new Promise(r => setTimeout(r, 2000 * tries)); }
+      }
+      parts.push(res);
+      if (off + st.part_size >= f.size) break;
+    }
+    await json("/api/upload/complete", {bucket: "fair-raw", key, upload_id: st.upload_id, parts});
+  }
+  await json("/api/upload/ready", {bucket: "fair-raw", folder});
+  drop.textContent = `Uploaded ${files.length} file(s) to ${folder}; the pipeline is curating it.`;
+};
+
+const THEMES = ["system", "light", "dark"], THEME_LABEL = {system: ["◐", "System"], light: ["☀", "Light"], dark: ["☾", "Dark"]};
+function setTheme(t) {
+  if (t === "system") delete document.documentElement.dataset.theme; else document.documentElement.dataset.theme = t;
+  try { t === "system" ? localStorage.removeItem("theme") : localStorage.setItem("theme", t); } catch (e) {}
+  const [icon, name] = THEME_LABEL[t];
+  $("#theme").innerHTML = `${icon}<span class="lbl"> ${name}</span>`; $("#theme").title = `Theme: ${name.toLowerCase()} (click to change)`;
+}
+$("#theme").onclick = () => setTheme(THEMES[(THEMES.indexOf(document.documentElement.dataset.theme || "system") + 1) % 3]);
+setTheme(document.documentElement.dataset.theme || "system");
+
+// Backlog: dark data found through VAST Catalog
+const fmtBytes = n => n >= 1e9 ? (n / 1e9).toFixed(1) + " GB" : n >= 1e6 ? (n / 1e6).toFixed(1) + " MB" : Math.round(n / 1e3) + " kB";
+async function showBacklog() {
+  current = null; semantic = null; renderList();
+  $("#detail").innerHTML = `<div class="detail"><div class="empty">Querying the catalog…</div></div>`;
+  let d;
+  try { d = await api("/api/backlog"); }
+  catch (e) { $("#detail").innerHTML = `<div class="detail"><div class="callout">Backlog unavailable: ${esc(String(e.message).slice(0, 200))}</div></div>`; return; }
+  // The catalog is a snapshot; a record that has landed since counts, from the live datasets list.
+  const live = Object.fromEntries(all.map(x => [x.folder, x.status === "published" ? "curated" : "review"]));
+  d.folders.forEach(f => { if (live[f.dataset] && f.status !== "curated") f.status = live[f.dataset]; });
+  const t = k => d.folders.filter(f => f.status === k).reduce((a, f) => ({folders: a.folders + 1, bytes: a.bytes + f.bytes}),
+                                                              {folders: 0, bytes: 0});
+  $("#detail").innerHTML = `<div class="detail">
+    <div class="top"><div><h2>Backlog: data with no FAIR record</h2>
+      <div class="path">Source: ${esc(d.source)}</div></div></div>
+    <div class="tiles">
+      <div class="tile dark"><b>${t("dark").folders}</b><span>dark folders · ${fmtBytes(t("dark").bytes)}</span></div>
+      <div class="tile"><b>${t("queued").folders + t("review").folders}</b><span>being curated or awaiting review · ${fmtBytes(t("queued").bytes + t("review").bytes)}</span></div>
+      <div class="tile done"><b>${t("curated").folders}</b><span>curated · ${fmtBytes(t("curated").bytes)}</span></div>
+    </div>
+    <table class="bl"><thead><tr><th>Folder</th><th>Data files</th><th>Size</th><th>Formats</th><th>Docs</th><th>Newest file</th><th></th></tr></thead><tbody>
+    ${d.folders.map(f => `<tr><td class="p">${esc(f.path)}</td><td>${f.data_files} / ${f.files}</td><td>${fmtBytes(f.bytes)}</td>
+      <td>${Object.entries(f.formats).map(([k, n]) => `<span class="chip">${esc(k)}${n > 1 ? " ×" + n : ""}</span>`).join(" ")}</td>
+      <td>${f.docs.length ? f.docs.map(x => `<span class="chip">${esc(x)}</span>`).join(" ") : `<span class="sub">none</span>`}</td>
+      <td>${esc((f.newest || "").slice(0, 10))}</td>
+      <td data-act="${esc(f.dataset)}">${actCell(f)}</td></tr>`).join("")
+      || `<tr><td colspan="7" class="empty">Nothing found.</td></tr>`}</tbody></table>
+    <p class="hint">The catalog is a periodic snapshot, so new files appear within ~15 minutes. <i>Curate</i> drops a <code>_READY</code>
+      marker in the folder; the same DataEngine function curates it in place, and it then appears under Datasets.
+      <i>Review</i> opens the draft record: accept, edit or reject each field, then publish.</p></div>`;
+  wireBacklog();
+}
+// Curating follows the folder: a running count until its record lands (seen by refresh), then Review.
+const curating = {};   // dataset id -> time Curate was pressed
+const CURATE_PATIENCE = 180;   // seconds before saying no record has appeared
+function actCell(f) {
+  if (f.status === "review") return `<button class="primary sm" data-open="${esc(f.dataset)}">Review</button>`;
+  if (f.status === "curated") return `<a class="chip st-published" data-open="${esc(f.dataset)}">published · open</a>`;
+  if (f.dataset in curating) {
+    const s = Math.round((Date.now() - curating[f.dataset]) / 1000);
+    return s < CURATE_PATIENCE ? `<span class="chip st-proposed">curating · ${s} s</span>`
+      : `<span class="chip st-needs-review">no record after ${Math.round(s / 60)} min</span>
+         <div class="sub">see Pipeline activity, or the function's logs</div>`;
+  }
+  if (f.status === "queued") return `<span class="chip st-proposed">queued</span>`;
+  return `<button class="sm" data-curate="${esc(f.bucket)}|${esc(f.prefix)}|${esc(f.dataset)}">Curate</button>`;
+}
+function wireBacklog() {
+  document.querySelectorAll("#detail [data-open]").forEach(b => b.onclick = () => open(b.dataset.open));
+  document.querySelectorAll("[data-curate]").forEach(b => b.onclick = async () => {
+    const [bucket, prefix, dataset] = b.dataset.curate.split("|");
+    b.disabled = true; b.textContent = "Queued…";
+    await api("/api/backlog/curate", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({bucket, prefix})});
+    curating[dataset] = Date.now(); updateBacklog();
+  });
+}
+function updateBacklog() {
+  let changed = false;
+  for (const [dataset] of Object.entries(curating)) {
+    const cell = document.querySelector(`#detail [data-act="${CSS.escape(dataset)}"]`);
+    const rec = all.find(x => x.folder === dataset);
+    if (rec) delete curating[dataset];
+    if (!cell) continue;
+    const [bucket, ...rest] = dataset.split("/");
+    cell.innerHTML = actCell({dataset, bucket, prefix: rest.join("/"),
+                              status: rec ? (rec.status === "published" ? "curated" : "review") : "queued"});
+    changed = true;
+  }
+  if (changed) wireBacklog();
+}
+$("#backlog-btn").onclick = showBacklog;
+
+// Help menu and dialog
+const menu = $("#help-menu"), dlg = $("#help");
+function closeMenu() { menu.classList.remove("open"); $("#help-btn").setAttribute("aria-expanded", "false"); }
+$("#help-btn").onclick = e => { e.stopPropagation(); const open = menu.classList.toggle("open"); $("#help-btn").setAttribute("aria-expanded", String(open)); };
+document.addEventListener("click", e => { if (!menu.contains(e.target)) closeMenu(); });
+function showHelp(tab) {
+  closeMenu();
+  document.querySelectorAll("[data-tab]").forEach(b => b.classList.toggle("on", b.dataset.tab === tab));
+  document.querySelectorAll("[data-pane]").forEach(p => p.hidden = p.dataset.pane !== tab);
+  if (!dlg.open) dlg.showModal();
+}
+document.addEventListener("click", e => { const t = e.target.closest("[data-help]"); if (t) { e.preventDefault(); showHelp(t.dataset.help); } });
+document.querySelectorAll("[data-tab]").forEach(b => b.onclick = () => showHelp(b.dataset.tab));
+$("#help-close").onclick = () => dlg.close();
+dlg.addEventListener("click", e => { if (e.target === dlg) dlg.close(); });  // click on the backdrop
+
+// #help-arch, #help-review, #help-score open the dialog on that tab (linkable).
+const hm = location.hash.match(/^#help-(arch|review|score|data|model|prod)$/); if (hm) showHelp(hm[1]);
+
+$("#q").oninput = () => { semantic = null; renderList(); };
+$("#q").onkeydown = e => { if (e.key === "Enter") searchMeaning(); };
+let vseq = 0, vtimer;
+const hideSuggest = () => { $("#vsuggest").hidden = true; };
+$("#vq").oninput = () => {
+  clearTimeout(vtimer);
+  const q = $("#vq").value.trim();
+  if (q.length < 2) return hideSuggest();
+  vtimer = setTimeout(async () => {
+    const seq = ++vseq, d = await api(`/api/variables?q=${encodeURIComponent(q)}`);
+    if (seq !== vseq || $("#vq").value.trim() !== q) return;   // a newer keystroke won
+    const box = $("#vsuggest"), top = d.variables.slice(0, 8);
+    box.innerHTML = top.map(v => `<a data-open="${esc(v.folder)}"><b>${esc(v.name)}</b>${v.units ? ` <i>${esc(v.units)}</i>` : ""}
+        <span>${esc(v.standard_name || v.description || "")} · ${esc(v.dataset_title || v.folder)}</span></a>`).join("")
+      + (d.variables.length ? `<div class="more">${d.variables.length > 8 ? `${d.variables.length} matches · ` : ""}Enter for the full table</div>`
+                            : `<div class="more">No variable matches.</div>`);
+    box.querySelectorAll("[data-open]").forEach(a => a.onmousedown = ev => { ev.preventDefault(); hideSuggest(); open(a.dataset.open); });
+    box.hidden = false;
+  }, 250);
+};
+$("#vq").onblur = hideSuggest;
+$("#vq").onkeydown = async e => {
+  if (e.key === "Escape") return hideSuggest();
+  if (e.key !== "Enter" || !$("#vq").value.trim()) return;
+  clearTimeout(vtimer); vseq++; hideSuggest();
+  const q = $("#vq").value.trim();
+  const d = await api(`/api/variables?q=${encodeURIComponent(q)}`);
+  current = null; renderList();
+  $("#detail").innerHTML = `<div class="detail"><div class="top"><div><h2>Variables matching “${esc(q)}”</h2>
+    <div class="path">${d.variables.length} across published datasets · ${esc(d.engine)}</div></div></div>
+    <table class="vars"><thead><tr><th>Variable</th><th>Units</th><th>CF standard name</th><th>Description</th><th>Dataset</th></tr></thead><tbody>
+    ${d.variables.map(v => `<tr><td class="f">${esc(v.name)}</td><td>${esc(v.units || "")}</td><td>${esc(v.standard_name || "")}</td>
+      <td>${esc(v.description || "")}</td><td><a data-open="${esc(v.folder)}">${esc(v.dataset_title || v.folder)}</a></td></tr>`).join("")
+      || `<tr><td colspan="5" class="empty">No variable matches.</td></tr>`}</tbody></table></div>`;
+  document.querySelectorAll("[data-open]").forEach(a => a.onclick = () => open(a.dataset.open));
+};
+api("/api/info").then(i => {
+  $("#mode").textContent = i.mode === "local" ? "local pipeline · " + i.model : "VAST cluster · " + i.model;
+  $("#arch-mode").innerHTML = i.mode === "local"
+    ? `<b>Running now: local mode.</b> The same function code runs inside this portal over a folder on disk, standing in for the buckets. Model: ${esc(i.model)}.`
+    : `<b>Running now: on the VAST cluster.</b> The function runs on DataEngine; this portal only reads records and writes reviews over S3. Model: ${esc(i.model)}.`;
+  if (i.embed_model) { $("#dm-model").textContent = i.embed_model; $("#dm-dims").textContent = i.embed_dims;
+    $("#dm-chars").textContent = Number(i.embed_max_chars).toLocaleString(); }
+});
+refresh(); setInterval(refresh, 3000);
+</script>
+</body>
+</html>
