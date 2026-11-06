@@ -188,9 +188,24 @@ or Google Dataset Search. A DataCite DOI on a public host would lift it.
 7. **Backlog.** The dark folders VAST Catalog found in the estate. Curate one in place; it flags that the
    same bytes are already published from `fair-raw`.
 
+## Works with the research assistant
+
+[vast-research-assistant-agent](https://github.com/vast-data/vast-research-assistant-agent) is the
+complement. This demo describes the data: it extracts metadata from data files where they sit, a curator
+approves it, and it publishes FAIR records. InsightEngine, which the research assistant uses, indexes the
+content: it chunks and embeds documents so an agent can answer questions about what they say. Both run on
+DataEngine triggers, VAST DB vectors and Kubernetes.
+
+- **Approved records feed the assistant.** Each publish writes the dataset's landing text to
+  `s3://fair-docs`; an InsightEngine pipeline on that bucket makes curated, citable descriptions
+  answerable in chat.
+- **The catalogue as an agent tool** (not built): alongside its Auto-Ontology database tool, the agent
+  could search this catalogue ("datasets with sea-surface temperature in kelvin since 2020") and return
+  approved records with links.
+
 ## Not built yet
 
-- **Ask questions of the data**: a research assistant over `s3://fair-docs` (with VAST InsightEngine).
+- **Ask questions of the data**: needs InsightEngine deployed over `s3://fair-docs` (see above).
 - **Identifiers** are test ARKs (`ark:/99999/fk4…`); a deployment would mint DataCite DOIs.
 - **Downloads from the snapshot**: a changed file is refused (409) with the snapshot named, but not yet
   served from it; the snapshot is readable over NFS at its access path.
