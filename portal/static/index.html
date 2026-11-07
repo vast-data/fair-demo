@@ -454,6 +454,148 @@ main.find .side { position: static; height: auto; } main.find .side > .panel.gro
 .query .stats { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
 .query .stat { border: 1px solid var(--line); border-radius: var(--r-sm); padding: 6px 10px; font-size: 12px; }
 .query .stat b { display: block; font-size: 15px; font-variant-numeric: tabular-nums; }
+
+/* Visual system: a calm, teal research workspace. Keep native controls and theme support. */
+:root { --bg:#f3f6f5; --panel:#fff; --ink:#183530; --muted:#617670; --line:#dce5e1; --soft:#edf3f0; --accent:#087b66; --good:#16845e; --accent-ink:#fff; --r:16px; --r-sm:9px; --h:36px; --gap:22px; --head-h:76px; --shadow:0 4px 24px rgba(23,57,46,.035); }
+:root[data-theme="dark"] { --bg:#101c19; --panel:#172722; --ink:#e6f1eb; --muted:#a0b8ad; --line:#30473d; --soft:#20362d; --accent:#69d5b6; --accent-ink:#10251e; --good:#77d6a8; }
+@media (prefers-color-scheme:dark) { :root:not([data-theme="light"]) { --bg:#101c19; --panel:#172722; --ink:#e6f1eb; --muted:#a0b8ad; --line:#30473d; --soft:#20362d; --accent:#69d5b6; --accent-ink:#10251e; --good:#77d6a8; } }
+body { font-size:14px; line-height:1.6; }
+header { padding:0 36px; gap:18px; background:var(--panel); }
+header .brand { gap:12px; }
+header .logo { width:36px; height:36px; border-radius:11px 11px 11px 2px; font-size:22px; background:var(--accent); }
+header h1 { font-size:19px; letter-spacing:-.04em; }
+header nav.views { margin-left:30px; padding:4px; border-radius:11px; }
+header nav.views button { height:34px; padding:0 20px; border-radius:8px; }
+header nav.views button[aria-current="page"] { color:var(--accent); }
+#help-btn, #theme { border-color:transparent; color:var(--muted); }
+main { max-width:1600px; margin:0 auto; padding:26px 36px 40px; grid-template-columns:minmax(300px,350px) minmax(0,1fr); }
+.home { position:relative; padding:52px 12px 32px; }
+.home .eyebrow { color:var(--accent); font-size:11px; font-weight:750; letter-spacing:.17em; text-transform:uppercase; display:flex; align-items:center; gap:9px; margin:0 0 19px; }
+.home .eyebrow::before { content:""; width:7px; height:7px; background:var(--accent); border-radius:50%; }
+.home h2 { max-width:760px; font-size:clamp(36px,4.4vw,62px); font-weight:650; line-height:1.08; letter-spacing:-.055em; margin:0 0 22px; }
+.home h2 span { color:var(--accent); }
+.home .lead { max-width:560px; font-size:16px; line-height:1.75; margin-bottom:30px; }
+.home form { width:min(760px,100%); padding:10px 10px 10px 20px; border-radius:16px; box-shadow:0 8px 35px color-mix(in srgb,var(--ink) 7%,transparent); }
+.home form textarea { font-size:15px; }
+.home form button { padding:0 24px; }
+.home form:focus-within { outline:2px solid var(--accent); outline-offset:3px; }
+.home .eg { max-width:760px; gap:8px; margin-top:16px; }
+.home .eg button { background:transparent; border-color:var(--line); font-size:12px; }
+.proof { width:min(1000px,100%); margin-top:38px; padding:24px 0; border-top:1px solid var(--line); border-bottom:1px solid var(--line); justify-content:space-evenly; gap:20px; }
+.proof:empty { display:none; }
+.hcards > p { grid-column:1 / -1; padding:24px; border:1px dashed var(--line); border-radius:var(--r); text-align:center; }
+.proof b { font-size:28px; font-weight:600; letter-spacing:-.04em; color:var(--ink); }
+.proof span { font-size:12px; }
+.collection-head { width:min(1000px,100%); display:flex; justify-content:space-between; text-align:left; align-items:center; margin-top:32px; gap:12px; }
+.collection-head h3 { margin:0; font-size:18px; font-weight:600; letter-spacing:-.025em; }
+.collection-head span { color:var(--muted); font-size:12px; }
+.hcards { margin-top:16px; gap:16px; }
+.hcards .panel { position:relative; padding:24px; min-height:164px; display:flex; flex-direction:column; transition:transform .18s,border-color .18s,box-shadow .18s; }
+.hcards .panel::before { content:"↗"; display:block; color:var(--accent); font-size:22px; line-height:1; margin-bottom:18px; }
+.hcards .panel:hover { transform:translateY(-3px); box-shadow:0 12px 30px color-mix(in srgb,var(--ink) 8%,transparent); }
+.hcards .t { font-size:16px; line-height:1.45; letter-spacing:-.02em; }
+.hcards .m { margin:10px 0 18px; line-height:1.6; }
+.hcards .askit { margin-top:auto; padding-top:14px; border-top:1px solid var(--line); font-weight:600; }
+.panel > h2 { padding:20px 20px 12px; font-size:11px; letter-spacing:.1em; }
+.item, .fitem { padding:17px 20px; }
+.item .t, .fitem .t { font-size:14px; line-height:1.5; }
+.item .m, .fitem .m { margin-top:8px; }
+.detail, .dpage { padding:30px; }
+.detail h2.dt, .dpage h2 { font-size:25px; letter-spacing:-.035em; line-height:1.25; }
+.fairstrip { margin-top:22px; padding:20px; gap:24px; }
+.fairstrip .bigs { font-size:32px; }
+.fairstrip .bars { gap:18px; }
+.bar { height:5px; }
+.meta .mrow { padding-top:15px; padding-bottom:15px; }
+.dtabs { margin-top:24px; }
+.dtabs button { height:44px; }
+.dpage .qbox { padding:22px; margin-top:24px; }
+.ctop { padding:18px 16px 12px; }
+.empty { padding:70px 24px; }
+button, a { -webkit-tap-highlight-color:transparent; }
+.hcards [role="button"]:focus-visible { outline:2px solid var(--accent); outline-offset:4px; }
+@media (prefers-reduced-motion:reduce) { *, *::before, *::after { scroll-behavior:auto!important; transition:none!important; } }
+@media(max-width:860px) { main { padding:20px; grid-template-columns:minmax(0,1fr); } header { padding:0 20px; gap:10px; } header nav.views { margin-left:8px; } .home { padding-top:32px; } }
+@media(max-width:540px) { :root { --head-h:68px; } header { padding:0 14px; gap:6px; } header nav.views { margin-left:0; } header nav.views button { padding:0 10px; } header .logo { width:30px; height:30px; } main { padding:16px; } .home { padding:26px 0; } .home .lead { font-size:14px; } .home form { padding:7px 7px 7px 12px; } .home form button { padding:0 14px; } .home form textarea { font-size:14px; } .home form textarea::placeholder { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; } .proof { display:grid; grid-template-columns:1fr 1fr; margin-top:28px; } .collection-head { align-items:flex-start; flex-direction:column; gap:3px; } .detail,.dpage { padding:20px; } }
+
+
+/* Supporting screens: dialogs, metadata forms, query builder and backlog. */
+dialog { border-radius:20px; box-shadow:0 24px 100px #0003; }
+dialog::backdrop { background:rgba(12,32,26,.48); backdrop-filter:blur(4px); }
+.dlg-head { padding:16px 20px; gap:6px; z-index:2; }
+#help .dlg-head { padding-right:100px; }
+#help-close { position:absolute; right:16px; top:16px; }
+.dlg-head .tab { height:auto; min-height:34px; white-space:normal; }
+.dlg-head .tab.on { color:var(--accent); }
+.dlg-body { padding:26px 30px 32px; }
+.dlg-body h3 { font-size:19px; letter-spacing:-.025em; margin:28px 0 10px; }
+.dlg-body p,.dlg-body li { line-height:1.8; }
+dialog.small .dlg-body { padding:24px; }
+dialog.small .drop { padding:34px 18px; background:var(--soft); border-color:color-mix(in srgb,var(--accent) 35%,var(--line)); }
+.drop.hot { outline:2px solid var(--accent); outline-offset:3px; }
+.meta .mrow { align-items:start; }
+.meta textarea { min-height:76px; }
+.meta .mrow.todo { border-radius:8px; }
+.pubbar { position:static; margin:24px -30px -30px; padding:18px 30px; gap:12px; border-radius:0 0 var(--r) var(--r); }
+.pubbar #publish { margin-left:auto; }
+.pubbar .tog { flex:1 1 280px; }
+.query .row { gap:10px; margin:14px 0; }
+.query .row > label { font-weight:600; white-space:nowrap; }
+.query .cols label { position:relative; height:auto; min-height:30px; padding:5px 10px; border-radius:7px; }
+.query .cols input { display:block; position:absolute; width:1px; height:1px; opacity:0; }
+.query .cols label:focus-within { outline:2px solid var(--accent); outline-offset:2px; }
+.query .row.ask input { min-width:0; width:100%; flex:1 1 180px; }
+.query select { max-width:100%; }
+.query .grid { border-radius:10px; }
+.query .grid th { position:sticky; top:0; background:var(--soft); }
+.tile { padding:20px; background:var(--soft); }
+.tile b { font-size:32px; margin-bottom:8px; }
+.bl { display:block; overflow-x:auto; max-width:100%; }
+.bl th { background:var(--soft); }
+.bl th,.bl td { padding:14px 12px; }
+.dpane { overflow-x:auto; }
+.dpage .ids, .query .tmeta, .query code, .dpage .factgrid dd { overflow-wrap:anywhere; }
+.fairstrip .bars { flex:1 1 300px; }
+.fairstrip .bars > div { flex:1 1 100px; width:auto; }
+@media(max-width:760px) {
+ .dlg-body { padding:20px; }
+ .dlg-head { padding:12px; gap:3px; }
+ #help .dlg-head { padding-right:84px; }
+ #help-close { right:10px; top:12px; }
+ .dlg-head .tab { font-size:12px; padding:6px 8px; }
+ .pubbar { position:static; margin:20px -20px -20px; padding:18px 20px; }
+ .pubbar #publish { width:100%; margin:0; }
+ .pubbar input[type=text] { width:100%; min-width:0; flex-basis:100%; }
+ .pubbar .tog { flex-basis:100%; }
+ .fairstrip { gap:16px; }
+ .fairstrip .bars { flex-basis:100%; }
+ .fairstrip .bars > div { flex-basis:calc(50% - 18px); }
+ h3.sec .legend { margin-left:0; gap:8px 12px; }
+ .query .row > label { width:auto; flex:0 0 100%; }
+ .query .ask button { flex:1 1 100%; }
+ .query .flt { min-width:0; max-width:100%; }
+ .query .flt input[type=text] { max-width:100%; }
+}
+
+
+.browse-all { margin-top:22px; }
+.review-guide { margin-top:24px; padding:24px; background:var(--soft); border:1px solid var(--line); border-radius:12px; display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:14px; }
+.review-guide .eyebrow { font-size:10px; font-weight:700; color:var(--accent); text-transform:uppercase; letter-spacing:.1em; }
+.review-guide h3 { margin:5px 0; font-size:21px; letter-spacing:-.03em; }
+.review-guide p { margin:0; color:var(--muted); font-size:13px; }
+.review-toggle { font-size:12px; color:var(--muted); display:flex; align-items:center; gap:7px; }
+#review-progress:empty { display:none; }
+#review-progress { flex-basis:100%; color:var(--accent); font-size:12px; border-top:1px solid var(--line); padding-top:12px; }
+.meta.focus-review .mrow:not(.todo) { display:none; }
+.publish-heading { margin-top:28px; padding-top:20px; border-top:1px solid var(--line); }
+.publish-heading h3 { margin:0 0 4px; font-size:18px; }
+.publish-heading p { margin:0; color:var(--muted); font-size:13px; }
+.form-label { display:block; font-size:13px; font-weight:600; margin:20px 0 8px; }
+#upload-files { max-width:100%; font:inherit; font-size:13px; }
+#upload-files::file-selector-button { border:1px solid var(--line); border-radius:8px; background:var(--soft); color:var(--ink); padding:9px 14px; margin-right:10px; cursor:pointer; }
+.upload-error { color:var(--bad); font-size:13px; }
+.upload-error:empty { display:none; }
+
 </style>
 </head>
 <body>
@@ -880,12 +1022,15 @@ main.find .side { position: static; height: auto; } main.find .side > .panel.gro
 </dialog>
 <main id="find-view" class="find ishome">
   <section class="home" id="fhome">
-    <h2>Find research data, and ask it questions</h2>
+    <div class="eyebrow">Research, ready for discovery</div>
+    <h2>Find your next insight.<br><span>Start with the data.</span></h2>
     <p class="lead">Every dataset here was described and approved by a person, and stays where it was written.</p>
     <form id="hform" class="fsearch" role="search"><div class="fwrap"><textarea id="hq" rows="1" autocomplete="off" aria-label="Describe the data you need"
       placeholder="Describe the data you need, in a sentence"></textarea></div><button class="primary" type="submit">Search</button></form>
     <div class="eg" id="heg"></div>
+    <button type="button" class="link browse-all" id="browse-all">Browse all published datasets →</button>
     <div class="proof" id="hproof"></div>
+    <div class="collection-head"><h3>Explore the collection</h3><span>Human-reviewed metadata · Data stays in place</span></div>
     <div class="hcards" id="hcards"></div>
   </section>
   <section class="fbar panel">
@@ -927,8 +1072,8 @@ main.find .side { position: static; height: auto; } main.find .side > .panel.gro
   <div class="dlg-body">
       <p class="sub" style="margin:0 0 10px">Name the folder, then drop the data files and any README, CITATION.cff or LICENSE. Profiling starts as each file lands;
         a draft record appears in the list, usually within a minute.</p>
-      <div class="search"><input type="text" id="folder" placeholder="domain/dataset-name, e.g. climate/my-run"></div>
-      <div class="drop" id="drop">Drop data files and docs here</div>
+      <label class="form-label" for="folder">1. Choose a dataset folder</label><div class="search"><input type="text" id="folder" aria-label="Dataset folder" placeholder="domain/dataset-name, e.g. climate/my-run"></div>
+      <label class="form-label" for="upload-files">2. Add data and documentation</label><div class="drop" id="drop" role="status" aria-live="polite">Drop files here, or choose them below.<br><small>Include a README or licence to make review easier.</small></div><input type="file" id="upload-files" multiple><p id="upload-error" role="alert" class="upload-error"></p>
       <details class="try">
         <summary>No data to hand? Try one of these</summary>
         <p>Download a file, then drop it here on its own. Without a README or licence it's dark data: the model
@@ -1082,10 +1227,10 @@ async function open(folder, keep) {
 
 function editor(name, f) {
   const v = f.value;
-  if (name === "license") return `<select data-edit="${name}">${LICENSES.map(l => `<option ${l === v ? "selected" : ""}>${l}</option>`).join("")}</select>`;
-  if (name === "description") return `<textarea data-edit="${name}">${esc(v)}</textarea>`;
-  if (name === "creators") return `<input type="text" data-edit="${name}" value="${esc(show(v).replaceAll(", ", "; "))}" placeholder="Name; Name; Organisation">`;
-  return `<input type="text" data-edit="${name}" value="${esc(show(v))}">`;
+  if (name === "license") return `<select aria-label="${esc(name)}" data-edit="${name}">${LICENSES.map(l => `<option ${l === v ? "selected" : ""}>${l}</option>`).join("")}</select>`;
+  if (name === "description") return `<textarea aria-label="${esc(name)}" data-edit="${name}">${esc(v)}</textarea>`;
+  if (name === "creators") return `<input type="text" aria-label="${esc(name)}" data-edit="${name}" value="${esc(show(v).replaceAll(", ", "; "))}" placeholder="Name; Name; Organisation">`;
+  return `<input type="text" aria-label="${esc(name)}" data-edit="${name}" value="${esc(show(v))}">`;
 }
 
 const TABULAR = ["CSV", "Parquet", "FITS", "NetCDF", "VCF", "ROOT"];
@@ -1101,7 +1246,9 @@ function renderDetail(r, score) {
   const published = r.status === "published";
   const names = [...ORDER.filter(k => r.fields[k]), ...Object.keys(r.fields).filter(k => !ORDER.includes(k))];
   const sources = new Set(names.map(k => r.fields[k].source));
-  const rows = names.map(k => {
+  const needsReview = names.filter(k => !["encodingFormat", "conformsTo"].includes(k) && r.fields[k].status !== "accepted");
+  const reviewNames = published ? names : [...needsReview, ...names.filter(k => !needsReview.includes(k))];
+  const rows = reviewNames.map(k => {
     const f = r.fields[k];
     const editable = !published && !["encodingFormat", "conformsTo"].includes(k);
     const open = editable && f.status !== "accepted";   // waits on a person: highlighted, with controls
@@ -1135,7 +1282,8 @@ function renderDetail(r, score) {
     <div id="call"></div>
     ${r.duplicates ? `<div class="callout">The same files are also in <b>${esc(r.duplicates.join(", "))}</b>: check it isn't a copy before publishing again.</div>` : ""}
     ${published ? curateTables(r) : ""}
-    <h3 class="sec">What we know about it <span class="legend">${legend}</span></h3>
+    ${!published ? `<section class="review-guide"><div><span class="eyebrow">Metadata review</span><h3 id="review-heading">${needsReview.length ? `${needsReview.length} field${needsReview.length === 1 ? "" : "s"} to review` : "Ready for a final check"}</h3><p>Check the evidence, complete missing details, then publish your record.</p></div><label class="review-toggle"><input type="checkbox" id="review-focus"> Show only fields to review</label><div id="review-progress" role="status" aria-live="polite"></div></section>` : ""}
+    <h3 class="sec">${published ? "Published metadata" : "Review & complete"} <span class="legend">${legend}</span></h3>
     <div class="meta">${rows}</div>
     <nav class="dtabs" aria-label="More about this dataset">
       <button class="on" data-dt="vars">Variables<span class="n">${r.variables.length}</span></button>
@@ -1145,7 +1293,7 @@ function renderDetail(r, score) {
     <div class="dpane" data-dp="vars">${inferredVars.length && !published ? `<p class="sub" style="margin:0 0 8px">${inferredVars.length} described by the model; accept or reject each, or leave them to be accepted at publish.</p>` : ""}<table class="vars"><tbody>${varRows}</tbody></table></div>
     <div class="dpane" data-dp="files" hidden><table class="vars"><tbody>${fileRows}</tbody></table></div>
     <div class="dpane" data-dp="checks" hidden><div class="checks" id="checks">${checks(score)}</div></div>
-    ${published ? "" : `<div class="pubbar"><label for="reviewer">Reviewer</label><input type="text" id="reviewer" placeholder="your name or ORCID" value="${esc(localStorage.getItem("reviewer") || "")}">
+    ${published ? "" : `<section class="publish-heading"><h3>Publish the record</h3><p>Confirm your name and choose how this dataset can be used.</p></section><div class="pubbar"><label for="reviewer">Reviewed by</label><input type="text" id="reviewer" placeholder="your name or ORCID" value="${esc(localStorage.getItem("reviewer") || "")}">
       ${tabular ? `<label class="tog" title="The files stay where they are either way; this also loads the tabular ones into VAST DataBase so they can be asked questions in place"><input type="checkbox" id="pub-tables" checked> Also load as tables in VAST DataBase</label>` : ""}
       <button class="primary" id="publish">Publish</button><span id="pubmsg" class="sub"></span></div>`}
   </div>`;
@@ -1159,6 +1307,8 @@ function renderDetail(r, score) {
     const v = b.previousElementSibling; v.classList.toggle("clamp"); b.textContent = v.classList.contains("clamp") ? "Show more" : "Show less"; });
   document.querySelectorAll("#detail textarea").forEach(t => { const fit = () => { t.style.height = "auto"; t.style.height = t.scrollHeight + 2 + "px"; };
     fit(); t.addEventListener("input", fit); });
+  const focus = $("#review-focus");
+  if (focus) focus.onchange = () => $("#detail .meta").classList.toggle("focus-review", focus.checked);
   const pb = $("#publish"); if (pb) pb.onclick = publish;
   wireCurateLinks();
   const tr = $("#t-retry"); if (tr) tr.onclick = async () => { tr.disabled = true; tr.textContent = "Retrying…";
@@ -1218,26 +1368,26 @@ function wireQuery(r) {
     <div class="sugg" id="q-sugg"></div>
     <div id="q-read"></div>
     <details class="refine" ${qState.refine ? "open" : ""}><summary>${qState.question ? "Adjust the query" : "Or build the query by hand"}<span class="sub">table, columns, filters, summary, sort</span></summary>
-    ${r.tables.length > 1 ? `<div class="row"><label>Table</label><select id="q-table">${r.tables.map(x => `<option value="${esc(x.table)}" ${x.table === t.table ? "selected" : ""}>${esc(x.part || x.table)} · ${x.rows.toLocaleString()} rows</option>`).join("")}</select></div>` : ""}
+    ${r.tables.length > 1 ? `<div class="row"><label>Table</label><select id="q-table" aria-label="Table">${r.tables.map(x => `<option value="${esc(x.table)}" ${x.table === t.table ? "selected" : ""}>${esc(x.part || x.table)} · ${x.rows.toLocaleString()} rows</option>`).join("")}</select></div>` : ""}
     <div class="row"><label>Columns</label><div class="cols">${t.columns.map(c => `<label class="${qState.cols.includes(c.name) ? "on" : ""}" title="${esc([c.description, c.units, c.type].filter(Boolean).join(" · "))}">
       <input type="checkbox" data-qc="${esc(c.name)}" ${qState.cols.includes(c.name) ? "checked" : ""}>${esc(c.name)}${c.units ? ` <span class="sub">${esc(c.units)}</span>` : ""}</label>`).join("")}</div></div>
     <div class="row"><label>Where</label><div class="flt" id="q-where">${qState.where.map((w, i) => `<span class="flt">
-      <select data-qw="${i}" data-k="col">${t.columns.map(c => opt(c.name, w.col)).join("")}</select>
-      <select data-qw="${i}" data-k="op">${OPS.map(o => opt(o, w.op)).join("")}</select>
-      <input type="text" data-qw="${i}" data-k="val" value="${esc(w.val)}" placeholder="${esc(hint(t, w.col))}">
+      <select data-qw="${i}" data-k="col" aria-label="Filter column">${t.columns.map(c => opt(c.name, w.col)).join("")}</select>
+      <select data-qw="${i}" data-k="op" aria-label="Filter comparison">${OPS.map(o => opt(o, w.op)).join("")}</select>
+      <input type="text" data-qw="${i}" data-k="val" aria-label="Filter value" value="${esc(w.val)}" placeholder="${esc(hint(t, w.col))}">
       <button class="link" data-qdel="${i}" title="Remove">✕</button></span>`).join("")}
       <button id="q-add">+ Filter</button></div></div>
     <div class="row"><label>Summarise</label><div class="flt">
-      <select id="q-fn">${[["", "no: show rows"], ["avg", "average"], ["min", "minimum"], ["max", "maximum"], ["sum", "total"], ["count", "count"]]
+      <select id="q-fn" aria-label="Summary function">${[["", "no: show rows"], ["avg", "average"], ["min", "minimum"], ["max", "maximum"], ["sum", "total"], ["count", "count"]]
         .map(([v, l]) => `<option value="${v}" ${qState.agg.fn === v ? "selected" : ""}>${l}</option>`).join("")}</select>
-      ${qState.agg.fn && qState.agg.fn !== "count" ? `<span class="sub">of</span><select id="q-agcol">${(["avg", "sum"].includes(qState.agg.fn) ? numeric : t.columns)
+      ${qState.agg.fn && qState.agg.fn !== "count" ? `<span class="sub">of</span><select id="q-agcol" aria-label="Summary column">${(["avg", "sum"].includes(qState.agg.fn) ? numeric : t.columns)
         .map(c => `<option ${c.name === qState.agg.column ? "selected" : ""}>${esc(c.name)}</option>`).join("")}</select>` : ""}
-      ${qState.agg.fn ? `<span class="sub">per</span><select id="q-by"><option value="">(all matching rows)</option>${t.columns
+      ${qState.agg.fn ? `<span class="sub">per</span><select id="q-by" aria-label="Group by"><option value="">(all matching rows)</option>${t.columns
         .map(c => `<option ${c.name === qState.agg.by ? "selected" : ""}>${esc(c.name)}</option>`).join("")}</select>` : ""}</div></div>
-    <div class="row"><label>Sort</label><div class="flt"><select id="q-order"><option value="">(as stored)</option>${sortable
+    <div class="row"><label>Sort</label><div class="flt"><select id="q-order" aria-label="Sort column"><option value="">(as stored)</option>${sortable
         .map(c => `<option ${c === qState.order.column ? "selected" : ""}>${esc(c)}</option>`).join("")}</select>
-      <select id="q-desc"><option value="1" ${qState.order.desc ? "selected" : ""}>highest first</option><option value="0" ${qState.order.desc ? "" : "selected"}>lowest first</option></select></div></div>
-    <div class="row"><label>Rows</label><input type="number" id="q-limit" min="1" max="10000" value="${qState.limit}">
+      <select id="q-desc" aria-label="Sort direction"><option value="1" ${qState.order.desc ? "selected" : ""}>highest first</option><option value="0" ${qState.order.desc ? "" : "selected"}>lowest first</option></select></div></div>
+    <div class="row"><label>Rows</label><input type="number" id="q-limit" aria-label="Maximum rows" min="1" max="10000" value="${qState.limit}">
       <button id="q-run">Run</button><span class="sub" id="q-msg"></span></div>
     <p class="tmeta">${t.rows.toLocaleString()} rows × ${t.columns.length} columns in <code>${esc(t.location)}</code>, from ${esc(t.source)}</p>
     </details>
@@ -1314,7 +1464,8 @@ async function renderSuggestions(r) {
     + got.map((x, i) => `<button class="sq${i >= 3 ? " extra" : ""}" data-sq="${i}">${esc(x.question)}</button>`).join("")
     + (got.length > 3 ? `<button class="link sub moreq" id="q-sugg-more">More questions ▸</button>` : "") : "";
   box.querySelectorAll("[data-sq]").forEach(b => b.onclick = () => runSuggestion(r, got[+b.dataset.sq]));
-  $("#q-sugg-t").onclick = () => box.classList.toggle("fold");
+  const toggle = box.querySelector("#q-sugg-t");
+  if (toggle) toggle.onclick = () => box.classList.toggle("fold");
   const more = $("#q-sugg-more"); if (more) more.onclick = () => { box.classList.toggle("all"); more.textContent = box.classList.contains("all") ? "Fewer questions ▴" : "More questions ▸"; };
 }
 async function runSuggestion(r, x) {
@@ -1401,6 +1552,13 @@ function decide(k, action) {
 }
 
 function highlight(k, action) {
+  const heading = $("#review-heading");
+  if (heading) {
+    const remaining = [...document.querySelectorAll("#detail .mrow.todo")].filter(row => !Object.hasOwn(decisions, row.dataset.row)).length;
+    heading.textContent = remaining ? `${remaining} field${remaining === 1 ? "" : "s"} to review` : "Ready for a final check";
+  }
+  const progress = $("#review-progress");
+  if (progress) progress.textContent = `${Object.keys(decisions).length} field decision${Object.keys(decisions).length === 1 ? "" : "s"} recorded · changes are saved when you publish`;
   document.querySelectorAll(`[data-k="${k}"]`).forEach(b => b.className = (b.dataset.a === action || (action === "edit" && b.dataset.a === "accept")) ? (b.dataset.a === "accept" ? "on" : "off") : "");
   const tr = document.querySelector(`.mrow[data-row="${k}"]`);
   if (tr) { tr.classList.toggle("decided-accept", action !== "reject"); tr.classList.toggle("decided-reject", action === "reject"); }
@@ -1443,21 +1601,31 @@ async function publish() {
     body: JSON.stringify({reviewer, decisions, variables: varDecisions, tables: tablesWanted})});
 }
 // Adding a dataset and the pipeline log live in dialogs, so the list is the one thing in the side column.
-$("#add-btn").onclick = () => $("#add").showModal(); $("#add-close").onclick = () => $("#add").close();
+$("#add-btn").onclick = () => { $("#upload-error").textContent = ""; $("#add").showModal(); }; $("#add-close").onclick = () => $("#add").close();
 $("#add").addEventListener("click", e => { if (e.target === $("#add")) $("#add").close(); });
 $("#pipe-line").onclick = () => $("#logdlg").showModal(); $("#log-close").onclick = () => $("#logdlg").close();
 $("#logdlg").addEventListener("click", e => { if (e.target === $("#logdlg")) $("#logdlg").close(); });
 
+$("#browse-all").onclick = () => { $("#find-view").classList.remove("ishome"); fstate.q = ""; $("#fq").value = ""; loadFind(); };
 const drop = $("#drop");
+let uploadBusy = false;
+async function uploadFiles(files) {
+  if (uploadBusy || !files.length) return;
+  const error = $("#upload-error"); error.textContent = "";
+  const folder = $("#folder").value.trim();
+  if (!/^[\w.-]+\/[\w.-]+$/.test(folder)) { error.textContent = "Enter a folder as domain/dataset-name, then choose the files again."; $("#upload-files").value = ""; $("#folder").focus(); return; }
+  uploadBusy = true; $("#upload-files").disabled = true; $("#folder").disabled = true;
+  try { await uploadBatch(files, folder); }
+  catch (err) { error.textContent = `Upload failed: ${String(err.message).slice(0, 180)}. Choose the files again to retry.`; }
+  finally { uploadBusy = false; $("#upload-files").disabled = false; $("#folder").disabled = false; $("#upload-files").value = ""; }
+}
+$("#upload-files").onchange = e => uploadFiles([...e.target.files]);
 drop.ondragover = e => { e.preventDefault(); drop.classList.add("hot"); };
 drop.ondragleave = () => drop.classList.remove("hot");
-drop.ondrop = async e => {
-  e.preventDefault(); drop.classList.remove("hot");
-  const folder = $("#folder").value.trim();
-  if (!/^[\w.-]+\/[\w.-]+$/.test(folder)) { drop.textContent = "Name the folder first: domain/dataset-name"; return; }
+drop.ondrop = e => { e.preventDefault(); drop.classList.remove("hot"); uploadFiles([...e.dataTransfer.files]); };
+async function uploadBatch(files, folder) {
   // Chunked (S3 multipart through the portal): 5 MB parts, each retried, so large files survive a flaky network.
   const json = (url, body) => api(url, {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(body)});
-  const files = [...e.dataTransfer.files];
   for (const [i, f] of files.entries()) {
     const key = `${folder}/${f.name}`;
     const st = await json("/api/upload/start", {bucket: "fair-raw", key});
@@ -1477,7 +1645,7 @@ drop.ondrop = async e => {
   }
   await json("/api/upload/ready", {bucket: "fair-raw", folder});
   drop.textContent = `Uploaded ${files.length} file(s) to ${folder}; the pipeline is curating it.`;
-};
+}
 
 const THEMES = ["system", "light", "dark"], THEME_LABEL = {system: ["◐", "System"], light: ["☀", "Light"], dark: ["☾", "Dark"]};
 function setTheme(t) {
@@ -1640,11 +1808,14 @@ function renderHome() {
     ${asks ? `<div><b>${asks >= 1e6 ? (asks / 1e6).toFixed(1) + "M" : asks.toLocaleString()}</b><span>rows you can ask, in place</span></div>` : ""}
     <div><b>${fmtBytes(bytes)}</b><span>of files, still where they were written</span></div>
     ${lics.length ? `<div><b>${esc(lics.slice(0, 2).join(" · "))}</b><span>open licence${lics.length === 1 ? "" : "s"}, stated</span></div>` : ""}` : "";
-  $("#hcards").innerHTML = rows.map(x => `<div class="panel" data-ff="${esc(x.folder)}"><div class="t">${esc(x.title)}</div>
+  $("#hcards").innerHTML = rows.map(x => `<div class="panel" role="button" tabindex="0" data-ff="${esc(x.folder)}"><div class="t">${esc(x.title)}</div>
       <div class="m">${[x.domain, x.formats.join(", "), lic(x.licence), (x.published || "").slice(0, 4)].filter(Boolean).map(esc).join(" · ")}</div>
       <div class="askit">${x.tables ? `Ask it → ${x.rows.toLocaleString()} rows` : `${x.files} file${x.files === 1 ? "" : "s"} · ${fmtBytes(x.bytes)}`}</div></div>`).join("")
     || `<p class="sub">Nothing is published yet. Datasets appear here once a curator publishes them.</p>`;
-  document.querySelectorAll("#hcards [data-ff]").forEach(el => el.onclick = () => openFind(el.dataset.ff));
+  document.querySelectorAll("#hcards [data-ff]").forEach(el => {
+    el.onclick = () => openFind(el.dataset.ff);
+    el.onkeydown = e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openFind(el.dataset.ff); } };
+  });
 }
 $("#hform").onsubmit = e => { e.preventDefault(); const q = $("#hq").value.trim(); if (!q) return;
   fstate.q = q; $("#fq").value = q; fqFit(); $("#find-view").classList.remove("ishome"); loadFind(); };
