@@ -265,6 +265,8 @@ def on_review(ctx, bucket, folder, key):
         # The curator chooses at publish whether the data is also loaded as tables ("tables" in the review,
         # default yes). The files stay where they are either way.
         record["tables_wanted"] = review.get("tables", True) is not False
+        # A new review starts a fresh count of load attempts; only a redelivery of this one adds to it.
+        record.pop("tables_attempts", None)
         record["tables_status"] = "loading" if record["tables_wanted"] and tables_here() is not None and \
             any(f.get("format") in datatables.TABULAR for f in record["files"]) else "none"
         if not record["tables_wanted"]:
@@ -339,6 +341,7 @@ def publish_tables(ctx, bucket, folder, did, record) -> int:
     for n in notes:
         ctx.logger.info(f"{did}: {n}")
     record.update(tables=tabs, table_notes=notes, tables_status="loaded" if tabs else "none")
+    record.pop("tables_attempts", None)   # finished: the count only guards loads that stop the function
     # Example questions for the Ask box, made once here with the tables' reviewed metadata and kept in the
     # record, so the portal shows them at once. Each comes with a query already checked against the tables.
     record["questions"] = []
