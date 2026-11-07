@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import copy
 import json
+import math
 import os
 from pathlib import Path
 
@@ -455,12 +456,17 @@ def _run_query(entry, columns, where, limit, with_summary=False, aggregate=None,
 
 
 def _json_rows(t) -> list[dict]:
-    """Rows as JSON values: times as ISO 8601, and float32 at its own precision (15.74, not 15.7399997)."""
+    """Rows as JSON values: times as ISO 8601, float32 at its own precision (15.74, not 15.7399997), and NaN or
+    infinity as null."""
     import pyarrow as pa
     for i, f in enumerate(t.schema):
         if pa.types.is_float32(f.type):
             t = t.set_column(i, f.name, pa.array([None if v is None else float(v) for v in t.column(i).cast(pa.string()).to_pylist()]))
-    return [{k: (v.isoformat() if hasattr(v, "isoformat") else v) for k, v in row.items()} for row in t.to_pylist()]
+    def val(v):
+        if isinstance(v, float) and not math.isfinite(v):
+            return None   # NaN or infinity, from a table loaded before NaN became null: JSON has neither
+        return v.isoformat() if hasattr(v, "isoformat") else v
+    return [{k: val(v) for k, v in row.items()} for row in t.to_pylist()]
 
 
 @app.post("/api/query")

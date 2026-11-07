@@ -24,6 +24,7 @@ from __future__ import annotations
 import datetime as dt
 import gzip
 import hashlib
+import math
 import os
 import re
 import sys
@@ -73,7 +74,7 @@ class TooBig(ValueError):
 
 def _safe(table: pa.Table, notes: list, where: str) -> pa.Table:
     """Only types every VAST DB client and SQL engine handles: signed integers, floats, strings, booleans,
-    dates and microsecond timestamps. Unsigned integers become int64 (text if they don't fit), decimals
+    dates and microsecond timestamps. NaN in a float column becomes null. Unsigned integers become int64 (text if they don't fit), decimals
     float64, times text; binary and nested columns are dropped (and noted)."""
     cols, fields = [], []
     for f, col in zip(table.schema, table.columns):
@@ -102,6 +103,10 @@ def _safe(table: pa.Table, notes: list, where: str) -> pa.Table:
                       or pa.types.is_boolean(t) or pa.types.is_date32(t) or pa.types.is_timestamp(t)):
                 notes.append("%s: column %s (%s) left out of the table" % (where, f.name, t))
                 continue
+            if pa.types.is_floating(t) and pc.any(pc.is_nan(col)).as_py():
+                # NaN marks a missing value (FITS light curves, NetCDF fill values): store it as null, so
+                # averages, minimums and filters skip it, and answers stay valid JSON.
+                col = pc.if_else(pc.is_nan(col), pa.scalar(None, t), col)
         except (pa.ArrowInvalid, pa.ArrowNotImplementedError, OverflowError) as e:
             notes.append("%s: column %s left out (%s)" % (where, f.name, str(e)[:80]))
             continue
@@ -472,7 +477,7 @@ def _stat(v):
     if isinstance(v, (dt.datetime, dt.date)):
         return v.isoformat()
     if isinstance(v, float):
-        return None if v != v else round(v, 6)
+        return round(v, 6) if math.isfinite(v) else None
     return v
 
 
