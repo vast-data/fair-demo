@@ -594,6 +594,9 @@ class LocalTables:
 # Convert and write each file in a child process where that is safe (Linux, as on DataEngine): if the
 # converter runs out of memory or a C library crashes on a corrupt file, only the child dies and the
 # function goes on. Off by default elsewhere (macOS local mode runs threads; tests run in-process).
+# Bumped whenever loading changes what a table holds (2: NaN stored as null). A table made by an older
+# loader is loaded again at the next publication, even though its source file hasn't changed.
+LOADER = 2
 ISOLATE = os.environ.get("FAIR_TABLE_ISOLATE", "1" if sys.platform.startswith("linux") else "0") == "1"
 
 
@@ -610,7 +613,7 @@ def _load_file(sink, record: dict, fname: str, path: Path, single: bool) -> tupl
         except Exception as e:  # noqa: BLE001 - e.g. a type the server refuses: the rest still load
             notes.append("%s: table %s couldn't be written (%s)" % (fname, name, str(e)[:200]))
             continue
-        out.append({"table": name, "part": part, "source": fname, "source_sha256": f["sha256"],
+        out.append({"table": name, "part": part, "source": fname, "source_sha256": f["sha256"], "loader": LOADER,
                     "rows": table.num_rows, "columns": column_stats(table, sources),
                     "loaded": dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds")})
     return out, notes
@@ -653,7 +656,8 @@ def _isolated(sink, record, fname, path, single, seconds) -> tuple[list[dict], l
 
 def load(sink, record: dict, fetch, previous: list[dict] | None = None) -> tuple[list[dict], list[str]]:
     """Tables for a dataset's published files; fetch(name) returns a local copy of one. A table whose
-    source bytes are unchanged since the last publication is kept as it is (its metadata is refreshed).
+    source bytes are unchanged since the last publication, made by this LOADER, is kept as it is (its
+    metadata is refreshed).
 
     Never raises for the data's sake: a file that can't be read, is over budget, makes the converter run
     out of memory, or whose table can't be written is skipped with a note, and the others still load.
@@ -669,7 +673,7 @@ def load(sink, record: dict, fetch, previous: list[dict] | None = None) -> tuple
         f = by_name[fname]
         old = [t for (s, _), t in prev.items() if s == fname]
         try:
-            if old and all(t["source_sha256"] == f["sha256"] and sink.exists(t["table"]) for t in old):
+            if old and all(t["source_sha256"] == f["sha256"] and t.get("loader") == LOADER and sink.exists(t["table"]) for t in old):
                 out += [dict(t) for t in old]
                 continue
             left = LOAD_SECONDS - (time.monotonic() - t0)

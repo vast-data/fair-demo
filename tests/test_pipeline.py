@@ -434,3 +434,20 @@ def test_nan_is_stored_as_missing_and_answers_stay_valid_json(tmp_path):
     # A table loaded before this fix still holds NaN and infinity: the rows go out as null.
     old = pa.table({"x": pa.array([1.5, math.nan, math.inf, None], pa.float64()), "y": pa.array([math.nan, 2.0, 3.0, 4.0], pa.float32())})
     assert _json_rows(old) == [{"x": 1.5, "y": None}, {"x": None, "y": 2.0}, {"x": None, "y": 3.0}, {"x": None, "y": 4.0}]
+
+
+def test_a_table_from_an_older_loader_is_loaded_again(tmp_path, monkeypatch):
+    """Unchanged source bytes keep a table, unless an older loader made it (e.g. before NaN became null)."""
+    from fairdemo import tables
+    monkeypatch.setattr(tables, "ISOLATE", False)
+    p = tmp_path / "t.csv"; p.write_text("a,b\n1,2.5\n3,4.5\n")
+    record = {"key_prefix": "demo/t", "files": [{"name": "t.csv", "format": "CSV", "sha256": "s1", "size": p.stat().st_size}]}
+    sink = tables.LocalTables(tmp_path / "db")
+    first, _ = tables.load(sink, record, lambda name: p)
+    assert first[0]["loader"] == tables.LOADER
+    stamp = sink._path(first[0]["table"]).stat().st_mtime_ns
+    kept, _ = tables.load(sink, record, lambda name: p, previous=first)
+    assert sink._path(first[0]["table"]).stat().st_mtime_ns == stamp and kept[0]["loader"] == tables.LOADER
+    older = [{k: v for k, v in t.items() if k != "loader"} for t in first]
+    again, _ = tables.load(sink, record, lambda name: p, previous=older)
+    assert sink._path(first[0]["table"]).stat().st_mtime_ns != stamp and again[0]["loader"] == tables.LOADER
