@@ -46,8 +46,8 @@ header .sub { color: var(--muted); white-space: nowrap; }
 @media (max-width: 1100px) { header .sub .on-vast { display: none; } }
 header .chip.mode { margin-left: auto; display: inline-flex; align-items: center; gap: 6px; max-width: 40vw; overflow: hidden; text-overflow: ellipsis; }
 header .chip.mode::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--good); flex: none; }
-@media (max-width: 720px) { header .sub, header .chip.mode { display: none; } header #backlog-btn { margin-left: auto; } header { padding: 0 16px; } }
-@media (max-width: 480px) { #theme .lbl { display: none; } header { gap: 8px; } }
+@media (max-width: 720px) { header .sub, header .chip.mode { display: none; } header .menu { margin-left: auto; } header { padding: 0 16px; } }
+@media (max-width: 480px) { #theme .lbl { display: none; } header { gap: 8px; } header h1 { display: none; } }
 
 /* Chips and status */
 .chip { display: inline-flex; align-items: center; gap: 4px; height: 22px; padding: 0 9px; border-radius: 999px; font-size: 12px; line-height: 1;
@@ -148,24 +148,51 @@ button.link:hover { text-decoration: underline; background: none; }
 .top h2 { font-size: 20px; line-height: 1.3; margin: 0 0 6px; letter-spacing: -.015em; text-wrap: balance; }
 .top .path { color: var(--muted); font-family: var(--mono); font-size: 12px; overflow-wrap: anywhere; }
 @media (max-width: 640px) { .top { grid-template-columns: 1fr; } }
-.scores { display: flex; gap: 8px; }
-.big { text-align: center; padding: 8px 14px 7px; border: 1px solid var(--line); border-radius: var(--r); min-width: 88px; background: var(--panel); }
-.big b { display: block; font-size: 26px; line-height: 1.1; font-variant-numeric: tabular-nums; letter-spacing: -.02em; }
-.big span { color: var(--muted); font-size: 10.5px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; }
-.big.after { border-color: color-mix(in srgb, var(--good) 35%, var(--line)); background: color-mix(in srgb, var(--good) 6%, var(--panel)); }
-.big.after b { color: var(--good); }
-.fair { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin: 18px 0 4px; }
-@media (max-width: 640px) { .fair { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-.fair > div { font-size: 12px; color: var(--muted); display: grid; grid-template-columns: 1fr auto; row-gap: 5px; }
-.fair > div b { color: var(--ink); }
-.bar { grid-column: 1 / -1; height: 6px; background: var(--soft); border-radius: 3px; overflow: hidden; }
-.bar i { display: block; height: 100%; background: var(--accent); border-radius: 3px; transition: width .3s; }
-.callout { margin: 16px 0; padding: 11px 14px; border-radius: var(--r-sm); border: 1px solid color-mix(in srgb, var(--warn) 45%, transparent);
-  border-left: 3px solid var(--warn); color: var(--ink); background: color-mix(in srgb, var(--warn) 8%, var(--panel)); }
-.callout.ok { border-color: color-mix(in srgb, var(--good) 40%, transparent); border-left-color: var(--good); background: color-mix(in srgb, var(--good) 8%, var(--panel)); }
+/* The review page: title, where it lives, one FAIR strip, one note if there is one, then the facts */
+.detail h2.dt { font-size: 19px; line-height: 1.3; margin: 0 0 4px; letter-spacing: -.01em; text-wrap: balance; }
+.where { color: var(--muted); font-size: 12.5px; overflow-wrap: anywhere; } .where a { color: var(--accent); text-decoration: none; } .where a:hover { text-decoration: underline; }
+.where code { font-size: 12px; }
+.fairstrip { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; margin: 14px 0 0; padding: 12px 14px; border: 1px solid var(--line); border-radius: var(--r); background: var(--soft); }
+.fairstrip .lbl { font-size: 10.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.fairstrip .bigs { font-size: 24px; font-weight: 700; letter-spacing: -.01em; font-variant-numeric: tabular-nums; line-height: 1.2; }
+.fairstrip .bigs i { font-style: normal; color: var(--muted); font-weight: 400; font-size: 16px; margin: 0 6px; }
+.fairstrip .bigs b { color: var(--good); } .fairstrip .bigs .sub { font-size: 12px; font-weight: 400; margin-left: 8px; }
+.fairstrip .bars { display: flex; gap: 14px; margin-left: auto; flex-wrap: wrap; }
+.fairstrip .bars > div { width: 118px; font-size: 12px; color: var(--muted); display: grid; grid-template-columns: 1fr auto; row-gap: 4px; }
+.fairstrip .bars b { color: var(--ink); font-weight: 600; font-variant-numeric: tabular-nums; }
+.bar { grid-column: 1 / -1; height: 4px; background: var(--line); border-radius: 2px; overflow: hidden; }
+.bar i { display: block; height: 100%; background: var(--accent); border-radius: 2px; transition: width .3s; }
+@media (max-width: 640px) { .fairstrip .bars { margin-left: 0; } .fairstrip .bars > div { width: calc(50% - 7px); } }
+.callout { margin: 10px 0 0; padding: 8px 12px; border-radius: 6px; border: 0; border-left: 3px solid var(--warn); color: var(--ink); font-size: 13px;
+  background: color-mix(in srgb, var(--warn) 7%, var(--panel)); }
+.callout.ok { border-left-color: var(--good); background: color-mix(in srgb, var(--good) 7%, var(--panel)); }
+.callout a { color: var(--accent); }
 .links { display: inline-flex; gap: 14px; margin-left: 6px; flex-wrap: wrap; }
 .links a { color: var(--accent); }
 .section-title { font-size: 11.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 22px 0 6px; }
+h3.sec { font-size: 11.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 22px 0 4px; display: flex; gap: 12px; align-items: baseline; flex-wrap: wrap; }
+h3.sec .legend { font-weight: 400; text-transform: none; letter-spacing: 0; margin-left: auto; font-size: 12px; display: flex; gap: 14px; flex-wrap: wrap; }
+.dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; flex: none; vertical-align: 1px; background: var(--none); }
+.dot.s-header { background: var(--header); } .dot.s-companion { background: var(--companion); } .dot.s-inferred { background: var(--inferred); }
+.dot.s-human { background: var(--human); } .dot.s-none { background: var(--none); } .dot.s-good { background: var(--good); }
+.legend .dot { margin-right: 5px; }
+/* Facts: field, value with its source as one quiet line, and a tick, or controls for what needs a person */
+.meta .mrow { display: grid; grid-template-columns: 150px minmax(0, 1fr) 150px; gap: 0 14px; padding: 10px 0; border-top: 1px solid var(--line); }
+.meta .mrow:first-child { border-top: 0; } .meta { border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+.meta .k { color: var(--muted); font-size: 13px; padding-top: 1px; } .meta .k .key { display: block; font: 400 11px var(--mono); color: var(--none); margin-top: 2px; }
+.meta .v { font-size: 13.5px; min-width: 0; }
+.src { font-size: 12px; color: var(--muted); margin-top: 3px; display: flex; align-items: baseline; gap: 6px; flex-wrap: wrap; overflow-wrap: anywhere; }
+.src .dot { align-self: center; }
+.meta .act { text-align: right; } .meta .ok { color: var(--good); font-size: 13px; }
+.meta .act .seg { vertical-align: top; }
+.meta .mrow.todo { background: color-mix(in srgb, var(--accent) 5%, var(--panel)); margin: 0 -12px; padding-left: 12px; padding-right: 12px; }
+.meta .mrow.decided-accept .k { box-shadow: inset 3px 0 0 var(--good); padding-left: 10px; margin-left: -10px; }
+.meta .mrow.decided-reject .k { box-shadow: inset 3px 0 0 var(--bad); padding-left: 10px; margin-left: -10px; }
+.meta .mrow.decided-reject .v { text-decoration: line-through; color: var(--muted); }
+@media (max-width: 760px) { .meta .mrow { grid-template-columns: 1fr; gap: 4px; } .meta .act { text-align: left; } .meta .mrow.todo { margin: 0; padding-left: 0; padding-right: 0; } }
+.detail .dtabs { margin-top: 20px; }
+.detail .pubbar .tog { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); font-size: 13px; }
+.detail .pubbar .tog input { width: auto; height: auto; }
 
 /* Tables */
 table { width: 100%; border-collapse: collapse; }
@@ -174,26 +201,9 @@ th { text-align: left; font-size: 11px; text-transform: uppercase; letter-spacin
 td { padding: 11px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
 tbody tr:last-child td { border-bottom: 0; }
 tbody tr:hover td { background: color-mix(in srgb, var(--soft) 55%, transparent); }
-.fields td { padding-top: 12px; padding-bottom: 12px; }
-table.fields { table-layout: fixed; }
-table.fields th:nth-child(1) { width: 170px; } table.fields th:nth-child(3) { width: 250px; } table.fields th:nth-child(4) { width: 150px; }
-@media (max-width: 1100px) { table.fields th:nth-child(1) { width: 130px; } table.fields th:nth-child(3) { width: 200px; } }
 td.f { font-weight: 600; width: 170px; }
-td.f .key { display: block; font: 400 11px var(--mono); color: var(--muted); margin-top: 2px; }
-td.v { min-width: 260px; }
-td.src { width: 220px; }
 td.act { width: 150px; white-space: nowrap; text-align: right; }
-tr.decided-accept td.f { box-shadow: inset 3px 0 0 var(--good); }
-tr.decided-reject td.f { box-shadow: inset 3px 0 0 var(--bad); }
-.srcchip { display: inline-flex; align-items: center; height: 20px; font-size: 11px; font-weight: 600; padding: 0 8px; border-radius: 999px; color: var(--accent-ink); }
-.s-header { background: var(--header); } .s-companion { background: var(--companion); } .s-inferred { background: var(--inferred); }
-.s-human { background: var(--human); } .s-none { background: var(--none); }
-.ev { color: var(--muted); font-size: 12px; margin-top: 5px; overflow-wrap: anywhere; line-height: 1.4; }
 .ev code { color: var(--ink); background: var(--soft); padding: 1px 5px; border-radius: 4px; font-size: 11px; overflow-wrap: normal; }
-.ev .file { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }
-.conf { display: flex; align-items: center; gap: 6px; margin-top: 6px; font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; }
-.conf span { height: 4px; width: 72px; background: var(--soft); border-radius: 2px; overflow: hidden; }
-.conf i { display: block; height: 100%; }
 .val { white-space: pre-wrap; overflow-wrap: anywhere; }
 .val.clamp { display: -webkit-box; -webkit-line-clamp: 5; -webkit-box-orient: vertical; overflow: hidden; }
 .val + .link { margin-top: 4px; }
@@ -246,12 +256,7 @@ details.try > summary { padding: 0; border: 0; }
 .sub { color: var(--muted); }
 @media (max-width: 700px) {
   .detail { padding: 16px 16px 0; }
-  .pubbar { margin: 20px -16px 0; padding: 10px 16px; } .pubbar input { width: auto; flex: 1; min-width: 140px; }
-  table.fields, table.fields tbody, table.fields tr, table.fields td { display: block; width: auto; }
-  table.fields thead { display: none; }
-  table.fields tr { padding: 10px 0; border-bottom: 1px solid var(--line); }
-  table.fields td { border: 0; padding: 3px 0; min-width: 0; }
-  table.fields td.act { text-align: left; padding-top: 8px; }
+  .pubbar { margin: 20px -16px 0; padding: 10px 16px; } .pubbar input[type=text] { width: auto; flex: 1; min-width: 140px; }
   .bl, .vars { display: block; overflow-x: auto; }
 }
 /* Help menu and dialog */
@@ -295,22 +300,174 @@ dialog::backdrop { background: rgba(0,0,0,.45); }
 .arch .ah { fill: var(--muted); }
 .arch .ah.you { fill: var(--human); }
 ol.steps { padding-left: 22px; } ol.steps li { margin: 4px 0; }
+ol.steps.tour li { margin: 10px 0; } ol.steps.tour code { overflow-wrap: anywhere; }
 .legend { display: grid; grid-template-columns: max-content 1fr; gap: 8px 14px; align-items: start; margin: 8px 0; }
-.legend .srcchip { justify-self: start; }
+.legend b { font-weight: 600; white-space: nowrap; }
 .mode-note { padding: 8px 12px; border-radius: 8px; background: var(--soft); color: var(--muted); font-size: 13px; }
 .hint { margin-top: 14px; color: var(--muted); }
 .hint a { color: var(--accent); cursor: pointer; }
+
+/* Views: Find data and Curate */
+header nav.views { display: flex; gap: 2px; margin-left: 14px; background: var(--soft); border-radius: var(--r-sm); padding: 2px; }
+header nav.views button { height: 28px; border: 0; background: transparent; color: var(--muted); font-weight: 600; padding: 0 12px; }
+header nav.views button[aria-current="page"] { background: var(--panel); color: var(--ink); box-shadow: var(--shadow); }
+main[hidden] { display: none; }
+/* Curate's side column: one list. Find and Add at the top; the backlog and the pipeline as a footer line. */
+.cside .ctop { display: flex; gap: 8px; padding: 12px 12px 10px; } .cside .ctop input { flex: 1; }
+.cfilter { display: flex; gap: 4px; padding: 0 12px 10px; flex-wrap: wrap; }
+.cfilter button { height: 24px; padding: 0 9px; font-size: 12px; border-radius: 999px; color: var(--muted); }
+.cfilter button .n { margin-left: 4px; opacity: .7; font-variant-numeric: tabular-nums; }
+.cfilter button.on { color: var(--ink); border-color: color-mix(in srgb, var(--accent) 45%, var(--line)); background: color-mix(in srgb, var(--accent) 8%, var(--panel)); }
+.cside .searchnote { padding: 0 12px 8px; margin-top: -2px; } .cside .searchnote:empty { display: none; }
+.cside .pending:not(:empty) { padding: 0 12px 8px; }
+.cside .list { border-top: 1px solid var(--line); }
+.item .m .dot { margin-right: 1px; } .item .m.warn { color: var(--warn); }
+.cfoot { padding: 10px 14px 12px; border-top: 1px solid var(--line); font-size: 12px; color: var(--muted); line-height: 1.5; }
+.cfoot a { color: var(--accent); cursor: pointer; text-decoration: none; } .cfoot a:hover { text-decoration: underline; }
+.cfoot .pipe { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; }
+/* Adding a dataset: a dialog, so the list stays the one thing on the left */
+dialog.small { width: min(560px, calc(100% - 32px)); }
+dialog.small .dlg-body { padding: 14px 20px 20px; } dialog.small .dlg-body h3 { margin: 0 0 8px; }
+dialog.small .search { padding: 0 0 10px; } dialog.small .drop { margin: 0 0 12px; padding: 22px 14px; } dialog.small .try { margin: 0; }
+dialog.small .log { max-height: 60vh; padding: 0; }
+/* Find data's home: the search is the page */
+main.find.ishome > :not(.home) { display: none; } main.find:not(.ishome) > .home { display: none; }
+.home { grid-column: 1 / -1; padding: 56px 20px 40px; display: flex; flex-direction: column; align-items: center; text-align: center; }
+.home h2 { font-size: 26px; letter-spacing: -.015em; margin: 0 0 6px; text-wrap: balance; }
+.home .lead { color: var(--muted); font-size: 15px; margin: 0 0 24px; max-width: 46rem; }
+.home form { width: min(760px, 100%); display: flex; align-items: flex-start; gap: 8px; border: 1px solid var(--line); border-radius: 14px; background: var(--panel);
+  box-shadow: 0 4px 16px rgba(16,24,40,.08); padding: 6px 6px 6px 16px; text-align: left; }
+.home form .fwrap { flex: 1; position: relative; min-width: 0; } .home form .fwrap::before { left: 0; top: 13px; }
+.home form textarea { border: 0; box-shadow: none; border-radius: 8px; padding: 10px 10px 10px 26px; min-height: 42px; height: 42px; font-size: 15.5px; }
+.home form textarea:focus { box-shadow: none; } .home form button { height: 42px; border-radius: 10px; padding: 0 18px; }
+.home .eg { display: flex; gap: 8px; margin-top: 14px; flex-wrap: wrap; justify-content: center; }
+.home .eg button { height: auto; min-height: 28px; font-size: 12.5px; color: var(--muted); border-radius: 999px; padding: 4px 11px; white-space: normal; }
+.home .eg button:hover { color: var(--ink); }
+.proof { display: flex; gap: 40px; margin-top: 40px; flex-wrap: wrap; justify-content: center; }
+.proof b { display: block; font-size: 22px; letter-spacing: -.01em; font-variant-numeric: tabular-nums; line-height: 1.2; }
+.proof span { font-size: 12.5px; color: var(--muted); }
+.hcards { width: min(1000px, 100%); margin-top: 32px; display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; text-align: left; }
+.hcards .panel { padding: 14px 16px; cursor: pointer; } .hcards .panel:hover { border-color: color-mix(in srgb, var(--accent) 40%, var(--line)); }
+.hcards .t { font-weight: 600; font-size: 13.5px; line-height: 1.35; } .hcards .m { color: var(--muted); font-size: 12px; margin-top: 6px; }
+.hcards .askit { margin-top: 10px; font-size: 12.5px; color: var(--accent); }
+@media (max-width: 720px) { .home { padding: 28px 0 24px; } .home h2 { font-size: 22px; } .proof { gap: 20px 28px; } }
+main.find { grid-template-rows: auto 1fr; }
+/* The search is the first thing on the page: no panel around it, one wide field with the filters as quiet pills under it */
+main.find .fbar { grid-column: 1 / -1; padding: 6px 0 2px; background: none; border: 0; box-shadow: none; }
+.fsearch { display: flex; gap: 10px; align-items: flex-start; }
+.fsearch .fwrap { flex: 1; position: relative; min-width: 0; }
+.fsearch .fwrap::before { content: ""; position: absolute; left: 16px; top: 15px; width: 16px; height: 16px; pointer-events: none; opacity: .55;
+  background: no-repeat center / contain url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%235b6270' stroke-width='2.2' stroke-linecap='round'><circle cx='11' cy='11' r='7'/><path d='M20 20l-3.5-3.5'/></svg>"); }
+.fsearch textarea { width: 100%; resize: none; min-height: 46px; max-height: 160px; height: 46px; padding: 12px 14px 12px 42px; font-size: 15px; line-height: 1.45;
+  overflow-y: auto; border-radius: 12px; box-shadow: var(--shadow); }
+.fsearch button { height: 46px; padding: 0 22px; font-size: 14px; border-radius: 12px; }
+.facets { display: flex; flex-wrap: wrap; gap: 6px; padding: 10px 2px 0; align-items: center; }
+main.find .side { position: static; height: auto; } main.find .side > .panel.grow .list { max-height: 72vh; }
+.facets select { width: auto; height: 26px; font-size: 12px; padding: 0 8px; border-radius: 999px; color: var(--muted); }
+.facets label { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; color: var(--muted); height: 26px; padding: 0 10px 0 7px; border: 1px solid var(--line); border-radius: 999px; background: var(--panel); }
+.fitem { padding: 10px 16px; border-bottom: 1px solid var(--line); cursor: pointer; }
+.fitem:hover { background: var(--soft); } .fitem.sel { background: color-mix(in srgb, var(--accent) 7%, var(--panel)); box-shadow: inset 3px 0 0 var(--accent); }
+.fitem .t { font-weight: 600; font-size: 13px; line-height: 1.35; }
+.fitem .m { color: var(--muted); font-size: 12px; margin-top: 3px; }
+.fitem .hit { font-size: 12px; margin-top: 3px; color: var(--accent); }
+.fitem.weak { opacity: .7; }
+/* A dataset page: title and description, then the Ask card as the one highlighted thing, then tabs for the rest */
+.dpage { padding: 20px 24px 24px; }
+.dpage h2 { font-size: 19px; line-height: 1.3; margin: 0 0 4px; letter-spacing: -.01em; }
+.dpage .ids { color: var(--muted); font-size: 12.5px; }
+.dpage .desc { margin: 10px 0 6px; white-space: pre-wrap; cursor: pointer; font-size: 13.5px; line-height: 1.5; }
+.dpage .desc.clampbox { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.dpage .acts { display: flex; flex-wrap: wrap; gap: 4px 16px; margin: 0 0 4px; }
+.dpage .acts a, .dpage .acts button { height: 28px; display: inline-flex; align-items: center; padding: 0; border: 0; border-radius: 0; font-size: 13px; text-decoration: none; color: var(--accent); background: none; }
+.dpage .acts a:hover, .dpage .acts button:hover { text-decoration: underline; background: none; }
+.dpage .qbox { margin: 16px 0 18px; padding: 14px 16px 12px; border: 1px solid color-mix(in srgb, var(--accent) 30%, var(--line)); border-radius: var(--r);
+  background: color-mix(in srgb, var(--accent) 4%, var(--panel)); }
+.qbox .qhead { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 4px 12px; margin: 0 0 10px; }
+.qbox .qhead h3 { font-size: 14px; margin: 0; } .qbox .qhead .sub { font-size: 12.5px; }
+.query .answer { margin: 12px 0 4px; } .query .answer b { font-size: 28px; font-variant-numeric: tabular-nums; letter-spacing: -.01em; }
+.query .answer span { display: block; color: var(--muted); font-size: 12.5px; margin-top: 2px; }
+.flist-sep { padding: 10px 16px 4px; font-size: 11.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
+.dtabs { display: flex; gap: 2px; border-bottom: 1px solid var(--line); overflow-x: auto; scrollbar-width: none; }
+.dtabs button { height: 36px; flex: none; border: 0; border-radius: 0; background: none; color: var(--muted); font-weight: 600; font-size: 13px; padding: 0 12px;
+  border-bottom: 2px solid transparent; margin-bottom: -1px; }
+.dtabs button:hover { background: none; color: var(--ink); } .dtabs button.on { color: var(--ink); border-bottom-color: var(--accent); }
+.dtabs button .n { font-weight: 400; color: var(--muted); margin-left: 4px; font-variant-numeric: tabular-nums; }
+.dpane { padding: 14px 0 4px; } .dpane[hidden] { display: none; }
+.dpage .factgrid { display: grid; grid-template-columns: max-content 1fr; gap: 5px 16px; font-size: 13px; margin: 0; }
+.dpage .factgrid dt { color: var(--muted); } .dpage .factgrid dd { margin: 0; overflow-wrap: anywhere; }
+.dpage pre.code { margin: 8px 0 14px; padding: 10px 12px; background: var(--soft); border-radius: var(--r-sm); font: 12px/1.55 var(--mono); white-space: pre-wrap; overflow-wrap: anywhere; }
+.dpage .codehead { display: flex; align-items: center; gap: 8px; margin: 0; font-size: 12.5px; font-weight: 600; }
+.dpage .codehead .sub { font-weight: 400; }
+.dpage .near a { cursor: pointer; }
+.dpage .near div { padding: 6px 0; border-bottom: 1px solid var(--line); font-size: 13px; } .dpage .near div:last-child { border-bottom: 0; }
+.dpage .foot { margin: 18px 0 0; font-size: 12.5px; }
+.fintro { padding: 28px 28px 32px; max-width: 46rem; } .fintro h2 { font-size: 20px; margin: 0 0 8px; }
+.fintro ul { padding-left: 20px; } .fintro li { margin: 6px 0; }
+@media (max-width: 720px) { header nav.views { margin-left: 4px; } header nav.views button { padding: 0 8px; } .dpage { padding: 16px; } .dpage .qbox { padding: 12px; } }
+
+/* Query the data in place */
+.query { padding: 12px 14px 14px; }
+.query .lead { color: var(--muted); font-size: 13px; margin: 0 0 10px; }
+.query .row.ask { margin: 0; gap: 8px; }
+.query .ask input { flex: 1; min-width: 200px; height: 42px; font-size: 14.5px; padding: 0 14px; border-radius: 9px; }
+.query .ask button { height: 42px; border-radius: 9px; }
+.query .readas { margin: 10px 0 2px; font-size: 13px; } .query .readas .sub { margin-right: 6px; } .query .readnote { margin: 2px 0 6px; font-size: 12px; }
+.query details.refine { margin-top: 10px; border: 0; border-top: 1px solid color-mix(in srgb, var(--accent) 18%, var(--line)); border-radius: 0; }
+.query details.refine > summary { padding: 8px 0 4px; font-size: 12.5px; color: var(--muted); font-weight: 500; } .query details.refine > summary .sub { font-weight: 400; margin-left: 6px; }
+.query details.refine[open] > summary { border-bottom: 0; color: var(--ink); }
+.query .tmeta { font-size: 12px; color: var(--muted); margin: 8px 0 2px; }
+.tline { font-size: 13px; margin: 4px 0 0; }
+/* Suggested questions: a quiet two-column list, not a cloud of pills */
+.query .sugg { display: grid; grid-template-columns: 1fr 1fr; gap: 0 20px; margin: 10px 0 0; }
+.query .sugg .sub { grid-column: 1 / -1; font-size: 12px; margin: 0 0 2px; text-align: left; color: var(--muted); cursor: default; }
+.query .sugg.fold .sq, .query .sugg.fold .moreq, .query .sugg:not(.all) .sq.extra { display: none; } .query .sugg.fold .sub { cursor: pointer; color: var(--accent); }
+.query .sugg .moreq { grid-column: 1 / -1; text-align: left; color: var(--accent); cursor: pointer; padding: 4px 0 0 20px; }
+.dot.s-bad { background: var(--bad); }
+.query .sugg.fold .sub::after { content: " ▸"; } .query .sugg .sub:hover { text-decoration: none; }
+.query .sugg .sq { display: flex; gap: 7px; align-items: flex-start; height: auto; padding: 4px 0; border: 0; border-radius: 0; background: none;
+  font-size: 13px; line-height: 1.4; white-space: normal; text-align: left; color: var(--ink); }
+.query .sugg .sq::before { content: "→"; color: var(--accent); flex: none; }
+.query .sugg .sq:hover { color: var(--accent); background: none; }
+@media (max-width: 760px) { .query .sugg { grid-template-columns: 1fr; } }
+.qbox .query { padding: 0; }
+.query details.ascode { margin-top: 10px; border: 0; } .query details.ascode > summary { padding: 4px 0; font-size: 12.5px; color: var(--muted); }
+.query details.ascode[open] > summary { border-bottom: 0; }
+.callout.info { border-color: color-mix(in srgb, var(--accent) 40%, transparent); border-left-color: var(--accent); background: color-mix(in srgb, var(--accent) 7%, var(--panel)); }
+.tnotes { margin: 8px 0 12px; padding: 0 14px 0 34px; font-size: 13px; color: var(--muted); overflow-wrap: anywhere; } .tnotes li { margin: 3px 0; }
+.query, .query .meta, .query .lead { min-width: 0; overflow-wrap: anywhere; }
+@media (max-width: 600px) { .query .row > label { width: 100%; } .query .flt input[type=text] { width: 110px; } }
+.query .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 8px 0; }
+.query .row > label { font-size: 12px; color: var(--muted); width: 64px; flex: none; }
+.query select, .query input[type=text], .query input[type=number] { width: auto; min-width: 0; }
+.query input[type=number] { width: 90px; height: var(--h); font: inherit; border: 1px solid var(--line); border-radius: var(--r-sm); padding: 0 8px; background: var(--panel); color: var(--ink); }
+.query .cols { display: flex; flex-wrap: wrap; gap: 6px; flex: 1; }
+.query .cols label { display: inline-flex; align-items: center; gap: 4px; height: 24px; padding: 0 8px; border: 1px solid var(--line); border-radius: 999px; font-size: 12px; cursor: pointer; }
+.query .cols label.on { border-color: color-mix(in srgb, var(--accent) 45%, transparent); background: color-mix(in srgb, var(--accent) 10%, var(--panel)); color: var(--accent); }
+.query .cols input { display: none; }
+.query .flt { display: flex; gap: 6px; flex-wrap: wrap; } .query .flt input[type=text] { width: 140px; }
+.query .meta { font-size: 12px; color: var(--muted); margin-top: 10px; }
+.query .grid { max-height: 340px; overflow: auto; border: 1px solid var(--line); border-radius: var(--r-sm); margin-top: 8px; }
+.query .grid table td, .query .grid table th { padding: 5px 9px; font-size: 12px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.query .grid th { position: sticky; top: 0; background: var(--panel); }
+.query .grid th small { display: block; text-transform: none; letter-spacing: 0; font-weight: 400; }
+.query pre { margin: 8px 0 0; padding: 10px 12px; background: var(--soft); border-radius: var(--r-sm); font: 12px/1.5 var(--mono); white-space: pre-wrap; overflow-wrap: anywhere; }
+.query .stats { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+.query .stat { border: 1px solid var(--line); border-radius: var(--r-sm); padding: 6px 10px; font-size: 12px; }
+.query .stat b { display: block; font-size: 15px; font-variant-numeric: tabular-nums; }
 </style>
 </head>
 <body>
 <header>
-  <div class="brand"><span class="logo" aria-hidden="true">F</span><h1 title="FAIR: findable, accessible, interoperable and reusable">FAIR Curation</h1><span class="sub">AI-ready, findable data<span class="on-vast"> · on the VAST Data Platform</span></span></div>
-  <span class="chip mode" id="mode">…</span>
-  <button id="backlog-btn" title="Data already on the system that has no FAIR record">Backlog</button>
-  <div class="menu" id="help-menu">
+  <div class="brand"><span class="logo" aria-hidden="true">F</span><h1 title="FAIR: findable, accessible, interoperable and reusable · on the VAST Data Platform">FAIR data</h1></div>
+  <nav class="views" aria-label="Views">
+    <button data-view="curate">Curate</button>
+    <button data-view="find" aria-current="page">Find data</button>
+  </nav>
+  <div class="menu" id="help-menu" style="margin-left:auto">
     <button id="help-btn" aria-haspopup="true" aria-expanded="false">Help ▾</button>
     <div class="menu-list" role="menu">
       <button role="menuitem" data-help="arch">How it works: architecture</button>
+      <button role="menuitem" data-help="tour">Walkthrough</button>
       <button role="menuitem" data-help="review">Reading a review</button>
       <button role="menuitem" data-help="score">How the FAIR score works</button>
       <button role="menuitem" data-help="data">The demo datasets</button>
@@ -326,6 +483,7 @@ ol.steps { padding-left: 22px; } ol.steps li { margin: 4px 0; }
 <dialog id="help" aria-label="Help">
   <div class="dlg-head">
     <button class="tab" data-tab="arch">How it works</button>
+    <button class="tab" data-tab="tour">Walkthrough</button>
     <button class="tab" data-tab="review">Reading a review</button>
     <button class="tab" data-tab="score">FAIR score</button>
     <button class="tab" data-tab="data">Demo data</button>
@@ -344,7 +502,7 @@ ol.steps { padding-left: 22px; } ol.steps li { margin: 4px 0; }
         to approve it. Approving publishes standard, machine-readable metadata next to the data.</p>
       <div class="mode-note" id="arch-mode"></div>
       <div class="arch-wrap">
-      <svg class="arch" viewBox="0 0 1120 752" role="img" aria-label="Architecture. On the left, outside the cluster: a researcher or HPC job, and this portal on Kubernetes, which also searches VAST DB. Inside the VAST cluster: the fair-raw and fair-estate buckets, VAST Catalog, the element trigger and a Kafka topic on the VAST Event Broker, which feed the DataEngine function (profile, curate, publish); below it, what the function writes: a snapshot, VAST DB, the metadata next to the data and the fair-docs bucket. On the right, outside: the LiteLLM model gateway.">
+      <svg class="arch" viewBox="0 0 1120 752" role="img" aria-label="Architecture. On the left, outside the cluster: a researcher or HPC job, and this portal on Kubernetes, which also searches VAST DB. Inside the VAST cluster: the fair-raw and fair-estate buckets, VAST Catalog, the element trigger and a Kafka topic on the VAST Event Broker, which feed the DataEngine function (profile, curate, publish); below it, what the function writes: a snapshot, VAST DB, the metadata next to the data and the fair-docs bucket; VAST DB holds the published data as tables too, which the portal queries, and Trino, managed by VAST on the CNodes, answers SQL over them. On the right, outside: the LiteLLM model gateway, and, as an option not built, other catalogs that subscribe to this site's publish events on the Event Broker.">
         <defs>
           <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="ah" d="M0,0 L10,5 L0,10 z"/></marker>
           <marker id="ahy" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="ah you" d="M0,0 L10,5 L0,10 z"/></marker>
@@ -363,7 +521,8 @@ ol.steps { padding-left: 22px; } ol.steps li { margin: 4px 0; }
         <text class="s" x="36" y="233">your decisions as</text>
         <text class="s" x="36" y="251">_fair/review.json, lists</text>
         <text class="s" x="36" y="269">the backlog, searches,</text>
-        <text class="s" x="36" y="287">serves /id/ark:/… pages</text>
+        <text class="s" x="36" y="287">queries the data tables,</text>
+        <text class="s" x="36" y="305">serves /id/ark:/… pages</text>
         <!-- the VAST cluster -->
         <rect class="zone" x="282" y="30" width="621" height="706" rx="12"/>
         <text class="zl" x="298" y="52">VAST CLUSTER</text>
@@ -380,10 +539,19 @@ ol.steps { padding-left: 22px; } ol.steps li { margin: 4px 0; }
         <text class="s" x="316" y="324">every file, every 15 min</text>
         <rect class="box" x="534" y="70" width="190" height="62" rx="8"/>
         <text class="t" x="548" y="94">Element trigger</text>
-        <text class="s" x="548" y="114">S3 and NFSv4 events</text>
+        <text class="s" x="548" y="114">DataEngine: S3 and NFSv4 events</text>
         <rect class="box" x="534" y="160" width="190" height="62" rx="8"/>
-        <text class="t" x="548" y="184">Kafka topic fair-events</text>
-        <text class="s" x="548" y="204">on the VAST Event Broker</text>
+        <text class="t" x="548" y="184">VAST Event Broker</text>
+        <text class="s" x="548" y="204">Kafka topic fair-events</text>
+        <!-- Trino, run by VAST as a managed application on the cluster's own CNodes: SQL over the data tables -->
+        <rect class="box" x="746" y="70" width="137" height="152" rx="8" style="stroke-dasharray: 5 4"/>
+        <text class="t" x="760" y="94">Trino</text>
+        <text class="s" x="760" y="114">managed by VAST,</text>
+        <text class="s" x="760" y="132">on the CNodes:</text>
+        <text class="s" x="760" y="150">SQL over the</text>
+        <text class="s" x="760" y="168">data tables</text>
+        <text class="s" x="760" y="192" font-style="italic">not deployed</text>
+        <text class="s" x="760" y="208" font-style="italic">in this demo</text>
         <!-- DataEngine: defined and triggered on VAST; its containers run on the linked Kubernetes compute -->
         <rect class="group" x="302" y="380" width="581" height="185" rx="10"/>
         <text class="g" x="318" y="398">DATAENGINE · FUNCTION fair-curate</text>
@@ -402,9 +570,9 @@ ol.steps { padding-left: 22px; } ol.steps li { margin: 4px 0; }
         <rect class="step" x="692" y="408" width="175" height="118" rx="8"/>
         <text class="t" x="706" y="432">Publish</text>
         <text class="s" x="706" y="452">on _fair/review.json:</text>
-        <text class="s" x="706" y="470">snapshot, RO-Crate,</text>
-        <text class="s" x="706" y="488">identifier, score,</text>
-        <text class="s" x="706" y="506">search index</text>
+        <text class="s" x="706" y="470">snapshot, data tables,</text>
+        <text class="s" x="706" y="488">RO-Crate, identifier,</text>
+        <text class="s" x="706" y="506">score, search index</text>
         <text class="s" x="318" y="552">Containers run on Kubernetes linked to the cluster as DataEngine compute.</text>
         <!-- what the function writes -->
         <rect class="box" x="302" y="610" width="136" height="90" rx="8"/>
@@ -414,8 +582,8 @@ ol.steps { padding-left: 22px; } ol.steps li { margin: 4px 0; }
         <rect class="box" x="450" y="610" width="136" height="90" rx="8"/>
         <text class="t" x="464" y="634">VAST DB fair-db</text>
         <text class="s" x="464" y="654">records, files,</text>
-        <text class="s" x="464" y="672">search index,</text>
-        <text class="s" x="464" y="690">variables</text>
+        <text class="s" x="464" y="672">search, variables,</text>
+        <text class="s" x="464" y="690">the data as tables</text>
         <rect class="box" x="598" y="610" width="136" height="90" rx="8"/>
         <text class="t" x="612" y="634">Next to the data</text>
         <text class="s" x="612" y="654">RO-Crate,</text>
@@ -430,6 +598,19 @@ ol.steps { padding-left: 22px; } ol.steps li { margin: 4px 0; }
         <text class="t" x="954" y="464">LiteLLM gateway</text>
         <text class="s" x="954" y="484">OpenAI-compatible,</text>
         <text class="s" x="954" y="502" id="arch-model">descriptive fields only</text>
+        <!-- option, not built: other sites' catalogs follow this one's publish events on the Event Broker -->
+        <rect class="box" x="940" y="540" width="170" height="88" rx="8" style="stroke-dasharray: 5 4"/>
+        <text class="t" x="954" y="564">VAST Event Broker</text>
+        <text class="s" x="954" y="584">a second topic: dataset</text>
+        <text class="s" x="954" y="602">published, updated or</text>
+        <text class="s" x="954" y="620">withdrawn, with the record</text>
+        <rect class="box" x="940" y="646" width="170" height="96" rx="8" style="stroke-dasharray: 5 4"/>
+        <text class="t" x="954" y="670">Other catalogs</text>
+        <text class="s" x="954" y="690">subscribe, replay the history,</text>
+        <text class="s" x="954" y="708">search across sites</text>
+        <text class="s" x="954" y="730" font-style="italic">an option, not built</text>
+        <path class="ln" d="M883,500 H912 V584 H936" marker-end="url(#ah)" style="stroke-dasharray: 5 4"/>
+        <path class="ln" d="M1025,628 V642" marker-end="url(#ah)" style="stroke-dasharray: 5 4"/>
         <!-- data in, events to DataEngine -->
         <path class="ln" d="M202,88 H298" marker-end="url(#ah)"/>
         <path class="ln" d="M492,101 H530" marker-end="url(#ah)"/>
@@ -449,11 +630,14 @@ ol.steps { padding-left: 22px; } ol.steps li { margin: 4px 0; }
         <text class="s" x="220" y="237">curate</text>
         <path class="ln" d="M302,311 H206" marker-end="url(#ah)"/>
         <text class="s" x="220" y="327">backlog</text>
-        <!-- the portal searches VAST DB: vector search on fair.search, and fair.variables -->
+        <!-- the portal searches VAST DB (vector search on fair.search, fair.variables) and queries the data tables -->
         <path class="ln" d="M112,345 V718 H518 V704" marker-end="url(#ah)"/>
-        <text class="s" x="120" y="600">search:</text>
-        <text class="s" x="120" y="616">vectors and</text>
-        <text class="s" x="120" y="632">variables</text>
+        <text class="s" x="120" y="590">search:</text>
+        <text class="s" x="120" y="606">vectors and</text>
+        <text class="s" x="120" y="622">variables;</text>
+        <text class="s" x="120" y="644">query: the</text>
+        <text class="s" x="120" y="660">data tables,</text>
+        <text class="s" x="120" y="676">VAST DB SDK</text>
         <!-- step numbers, as in the list below -->
         <g><circle class="num" cx="245" cy="74" r="10"/><text class="numt" x="241" y="78">1</text></g>
         <g><circle class="num" cx="512" cy="86" r="10"/><text class="numt" x="508" y="90">2</text></g>
@@ -462,7 +646,8 @@ ol.steps { padding-left: 22px; } ol.steps li { margin: 4px 0; }
         <g><circle class="num" cx="245" cy="136" r="10"/><text class="numt" x="241" y="140">5</text></g>
         <g><circle class="num" cx="684" cy="586" r="10"/><text class="numt" x="680" y="590">6</text></g>
         <g><circle class="num" cx="112" cy="560" r="10"/><text class="numt" x="108" y="564">7</text></g>
-        <g><circle class="num" cx="245" cy="297" r="10"/><text class="numt" x="241" y="301">8</text></g>
+        <g><circle class="num" cx="112" cy="690" r="10"/><text class="numt" x="108" y="694">8</text></g>
+        <g><circle class="num" cx="245" cy="297" r="10"/><text class="numt" x="241" y="301">9</text></g>
       </svg>
       </div>
       <ol class="steps">
@@ -479,24 +664,79 @@ ol.steps { padding-left: 22px; } ol.steps li { margin: 4px 0; }
         <li><b>Publish.</b> The function takes a VAST snapshot of the folder (the published bytes, preserved), writes RO-Crate,
           Croissant and a landing page next to the data, gives the dataset an identifier, and scores it again. Each file gets
           an HTTP download link that is served only while the file still matches what was published.</li>
-        <li><b>Find.</b> Publishing also indexes the dataset in VAST DB: an embedding in a vector-indexed table
+        <li><b>Find.</b> Publishing also indexes the dataset in VAST DB: an embedding in a vector-indexed table (VAST Vector Search)
           (<code>fair.search</code>) for searching by meaning, and one row per variable (<code>fair.variables</code>) for exact
           questions such as "every dataset with <code>sea_surface_temperature</code>". Press <b>Enter</b> in the search box, or use
           <i>Find a variable</i>.</li>
+        <li><b>Query.</b> Publishing loads the data itself into VAST DB too, one table per part (<code>fair-db/data</code>): rows
+          of a CSV, cells of a NetCDF grid, cadences of a light curve, variants of a VCF, events and particles of a ROOT file.
+          Each column keeps its reviewed units and meaning. <i>Query the data in place</i> on a published dataset filters it where
+          it is stored, and <code>/id/&lt;ark&gt;/tables/&lt;table&gt;</code> serves the same query over HTTP as CSV, JSON or Parquet.
+          The portal reads them through the VAST DB Python SDK, which a notebook or job can use the same way. For SQL, VAST runs
+          Trino as a managed application on the cluster's own CNodes, so there is no query cluster to set up; this demo doesn't deploy it.</li>
         <li><b>Backlog.</b> Data already on the system is found through <b>VAST Catalog</b>, a periodic snapshot of every
           file in the namespace. <i>Backlog</i> lists folders that hold data but have no FAIR record (dark data), with size,
           formats and any docs. <i>Curate</i> drops a <code>_READY</code> marker, and the same function curates the folder in
           place. The estate bucket <code>fair-estate</code> is shared over S3 and NFS.</li>
       </ol>
     </section>
+    <section data-pane="tour" hidden>
+      <p class="lead">A route through the portal with the demo datasets, in about fifteen minutes. <i>Curate</i> is where records are
+        drafted, reviewed and published; <i>Find data</i> is for the people who then look for and use the data. Only steps 2 and 5
+        change anything: they add a folder or publish a record.</p>
+      <ol class="steps tour">
+        <li><b>The list.</b> Open <i>Curate</i>. The left column is one list, one line per dataset: <i>Published · FAIR 92</i>,
+          <i>Ready to review</i>, or <i>Dark data · needs licence and creators</i> when publishing waits on a person. The footer says how many
+          folders on the system hold data but have no record yet (from VAST Catalog), and the pipeline's last event; click it for the log.</li>
+        <li><b>Add a folder (optional).</b> <i>+ Add</i> opens a small dialog: name the folder, such as <code>climate/my-run</code>, and drop
+          in a data file, or use one from <i>No data to hand?</i>. Profiling starts as each file lands; when the folder is complete, a draft
+          record appears in the list, usually within a minute.</li>
+        <li><b>A documented dataset.</b> Open <code>climate/oisst-v2.1-2024-09-01</code>. Under each value, one line says where it came
+          from: a blue dot for the NetCDF header (title, keywords, instrument), teal for the folder's CITATION.cff (the eight authors, licence,
+          DOI), purple for the model's proposals, with their evidence and how sure it was. Accepted facts are quiet, with a tick. The strip at
+          the top is the FAIR score before and after; <i>FAIR checks</i>, in the tabs below, lists what every point is for
+          (<a data-help="score">FAIR score</a>).</li>
+        <li><b>A dark dataset.</b> Open <code>particle-physics/user-skims-07</code>: one ROOT file, no documents. The rows that wait on a
+          person are highlighted, with <i>Accept</i> and <i>Reject</i> beside them. The model describes the physics from the branch names, but
+          it never supplies a licence or creators, so publishing waits for you. A note says the same bytes are already published as the CMS
+          dataset.</li>
+        <li><b>Publish.</b> On a dataset that is still waiting, accept or edit the highlighted proposals and enter your name. <i>Also load as
+          tables in VAST DataBase</i> is on by default for tabular files: the files stay where they are either way; this adds a copy that can
+          be asked questions in place. Publish. The pipeline takes a snapshot of the folder, writes RO-Crate and Croissant next to the data,
+          loads the tables a little later, and makes six example questions for them.</li>
+        <li><b>Find it.</b> Switch to <i>Find data</i>. The home page is a search box, a few example sentences, and the numbers: how many
+          datasets, how many rows can be asked in place, how much data stayed where it was written. Type <code>ocean temperature from
+          satellites</code> (ranked by meaning, from the stored embeddings) or a variable such as <code>sea_surface_temperature</code> or
+          <code>Muon_pt</code>; narrow by format, licence, or <i>Queryable</i>.</li>
+        <li><b>Ask it.</b> Open <code>Road traffic statistics … Wales</code>. <i>Ask this dataset</i> is the one highlighted thing on the
+          page. Click one of the three suggested questions (they run at once: their queries were checked when the dataset was published) or
+          type <code>average traffic on the M4 by year</code>. <i>Read as</i> shows how the question was understood, <i>why?</i> the model's
+          reasoning, and <i>Adjust the query</i> holds the same query as ordinary controls. On OISST, try <code>average sea temperature
+          between 50 and 60N, 40 to 10W</code>: one figure, with how many rows it covered and how long VAST DataBase took.</li>
+        <li><b>The rest of the page.</b> The tabs below hold the facts and citation, the variables with their units, the files with
+          checksums, <i>Use it from code</i> (the same query from Python with the VAST DB SDK, from HTTP, and as SQL for Trino, which this
+          demo doesn't deploy), and similar datasets. <i>Landing page</i> is plain HTML with schema.org metadata embedded; the same address
+          returns RO-Crate to machine clients (<code>Accept: application/ld+json</code>).</li>
+        <li><b>The backlog.</b> Back in <i>Curate</i>, the footer's <i>Review them</i> lists the folders that hold data but have no record
+          yet: on a cluster, found by VAST Catalog; locally, by walking the folders. <i>Curate</i> drafts a record for one in place, without
+          moving it.</li>
+        <li><b>Under the hood (optional).</b> <a data-help="arch">How it works</a> is the architecture, including the Event Broker option
+          for a catalog of catalogs. <a data-help="model">Data model</a> lists the VAST DB tables: every record version, who made it and
+          the scores, plus the search index, the variables and the data tables. <a data-help="prod">Production</a> lists what this demo
+          leaves out.</li>
+      </ol>
+      <p class="sub">Some answers depend on the model: if it is unavailable, searching falls back to matching words, and questions can
+        still be asked with the controls instead.</p>
+    </section>
     <section data-pane="review" hidden>
-      <p class="lead">Every field shows where its value came from, so you can tell at a glance what to trust and what to check.</p>
+      <p class="lead">Under each value, one line says where it came from: a coloured dot and the evidence. Facts are quiet; anything that waits on
+        a person is highlighted, with <i>Accept</i> and <i>Reject</i> beside it, and can be edited in place.</p>
       <div class="legend">
-        <span class="srcchip s-header">From the file</span><span>Stated in the file's own header (NetCDF/ACDD attributes, FITS keywords, VCF meta lines). Accepted as is.</span>
-        <span class="srcchip s-companion">From the researcher's docs</span><span>Taken from README, CITATION.cff or LICENSE in the folder. Accepted as is.</span>
-        <span class="srcchip s-inferred">Proposed by the model</span><span>Inferred from the facts above, with the model's own confidence (bar) and the evidence it used. Needs your accept or edit.</span>
-        <span class="srcchip s-human">Entered by a person</span><span>A value you typed. It overrides everything else and is recorded with your name.</span>
-        <span class="srcchip s-none">Not found</span><span>Nothing in the data or documents says this. Only a person can supply it.</span>
+        <b><span class="dot s-header"></span>From the file</b><span>Stated in the file's own header (NetCDF/ACDD attributes, FITS keywords, VCF meta lines). Accepted as is.</span>
+        <b><span class="dot s-companion"></span>From the researcher's documents</b><span>Taken from README, CITATION.cff or LICENSE in the folder. Accepted as is.</span>
+        <b><span class="dot s-inferred"></span>Proposed by the model</b><span>Inferred from the facts above, with the evidence it used and how sure it is. Needs your accept or edit.</span>
+        <b><span class="dot s-human"></span>Entered by a person</b><span>A value you typed. It overrides everything else and is recorded with your name.</span>
+        <b><span class="dot s-none"></span>Not found</b><span>Nothing in the data or documents says this. Only a person can supply it.</span>
       </div>
       <h3>What the model may and may not do</h3>
       <p>It may propose a title, description, keywords, domain, technique, instrument, coverage and variable meanings. It never
@@ -527,9 +767,9 @@ ol.steps { padding-left: 22px; } ol.steps li { margin: 4px 0; }
           <tr><td>Identifiers</td><td>Test ARKs (ark:/99999/fk4…) resolved by the portal.</td><td>DataCite DOIs (or the institution's PID service), with landing pages on a stable public host.</td></tr>
           <tr><td>Access</td><td>Open datasets; files served from S3 through the portal.</td><td>Restricted data: access conditions in the record, authorisation at download, and metadata-only publication where needed.</td></tr>
           <tr><td>Preservation</td><td>A VAST snapshot per publication, not locked.</td><td>Locked (indestructible) snapshots or replication, with a retention policy.</td></tr>
-          <tr><td>Scale</td><td>The function downloads whole files; search uses VAST DB's vector index.</td><td>Header-only or ranged reads for large files.</td></tr>
+          <tr><td>Scale</td><td>The function downloads whole files; search uses VAST Vector Search in VAST DataBase.</td><td>Header-only or ranged reads for large files.</td></tr>
           <tr><td>Operations</td><td>One portal replica; a personal model key.</td><td>A service-account key, more than one replica, monitoring of the pipeline, dead-letter topic and Catalog runs, and backups of fair-db.</td></tr>
-          <tr><td>Catalogue of catalogues</td><td>One site's catalog, searchable in its own portal.</td><td>Each site publishes a DCAT-AP feed of its published records; a central service harvests the feeds into the same tables with a site column, re-embeds them with one model so search ranks across sites, and links back to each site for access.</td></tr>
+          <tr><td>Catalog of catalogs</td><td>One site's catalog, searchable in its own portal.</td><td>One option, while the requirement is still being defined: each site publishes its catalog changes (a dataset published, updated or withdrawn, with its record) as events on a topic on its own VAST Event Broker, which speaks the Kafka protocol. A central catalog, or any partner site, subscribes and keeps the same tables with a site column, re-embedding with one model so search ranks across sites, and links back to each site for access. The broker keeps an ordered, replayable history, so a new subscriber catches up from the start; a DCAT-AP feed can be generated from the same events for harvesters that pull.</td></tr>
         </tbody>
       </table></div>
       <p class="hint">The same list, with more detail, is in <code>docs/PRODUCTION.md</code> in the repository.</p>
@@ -562,7 +802,7 @@ ol.steps { padding-left: 22px; } ol.steps li { margin: 4px 0; }
         A query is embedded with a short search instruction in front, as the model expects. Each result's score is its cosine
         similarity, plus up to 0.10 for query words found in its title, keywords, domain or description. Below 0.35 the portal
         says there's no strong match.</p>
-      <p>VAST DB's vector index answers the query. If the Query Engine is unavailable, the portal reads the same stored vectors
+      <p>VAST Vector Search, in VAST DataBase, answers the query. If the Query Engine is unavailable, the portal reads the same stored vectors
         with a plain select and ranks them itself. Each result says which engine answered.</p>
       <h3>Find a variable</h3>
       <p>An exact lookup rather than a semantic one, over <code>fair.variables</code>: name, CF standard name, units and description,
@@ -575,6 +815,8 @@ ol.steps { padding-left: 22px; } ol.steps li { margin: 4px 0; }
           <tr><td><code>records</code></td><td>record version (append-only: the audit trail)</td><td>folder, version, status, title, domain, pid, score_before, score_after, record (JSON), actor, updated_at</td></tr>
           <tr><td><code>search</code></td><td>published dataset</td><td>folder, pid, title, domain, keywords, description, updated_at, embedding (FLOAT[1024], vector-indexed)</td></tr>
           <tr><td><code>variables</code></td><td>variable of a published dataset</td><td>folder, pid, dataset_title, name, units, standard_name, description, source</td></tr>
+          <tr><td><code>tables</code></td><td>table loaded at publication (append-only)</td><td>folder, pid, table, location, source, source_sha256, rows, columns (JSON: type, units, standard name, description, range), loaded_at</td></tr>
+          <tr><td><code>data.&lt;table&gt;</code></td><td>row, cell, variant or object of the published data (schema <code>data</code>)</td><td>the data's own columns, e.g. time, lat, lon, sst for OISST</td></tr>
         </tbody>
       </table></div>
       <h3>From record to standard metadata</h3>
@@ -636,10 +878,55 @@ ol.steps { padding-left: 22px; } ol.steps li { margin: 4px 0; }
     </section>
   </div>
 </dialog>
-<main>
+<main id="find-view" class="find ishome">
+  <section class="home" id="fhome">
+    <h2>Find research data, and ask it questions</h2>
+    <p class="lead">Every dataset here was described and approved by a person, and stays where it was written.</p>
+    <form id="hform" class="fsearch" role="search"><div class="fwrap"><textarea id="hq" rows="1" autocomplete="off" aria-label="Describe the data you need"
+      placeholder="Describe the data you need, in a sentence"></textarea></div><button class="primary" type="submit">Search</button></form>
+    <div class="eg" id="heg"></div>
+    <div class="proof" id="hproof"></div>
+    <div class="hcards" id="hcards"></div>
+  </section>
+  <section class="fbar panel">
+    <form class="fsearch" id="fform" role="search">
+      <div class="fwrap"><textarea id="fq" rows="1" autocomplete="off" aria-label="Describe the data you're looking for"
+        placeholder="Describe the data you need, or name a variable such as sea_surface_temperature or Muon_pt"></textarea></div>
+      <button class="primary" type="submit">Search</button>
+    </form>
+    <div class="facets" id="facets"></div>
+  </section>
   <section class="side">
-    <div class="panel">
-      <h2>Add a dataset</h2>
+    <div class="panel grow">
+      <h2>Published datasets <span class="sub" id="fcount"></span></h2>
+      <div class="searchnote" id="fnote"></div>
+      <div class="list" id="flist"><div class="empty">Loading…</div></div>
+    </div>
+  </section>
+  <section class="panel"><div id="fdetail"></div></section>
+</main>
+<main id="curate-view" hidden>
+  <section class="side">
+    <div class="panel grow cside">
+      <div class="ctop"><input type="search" id="q" placeholder="Find a dataset…" title="Type to filter; Enter searches by meaning">
+        <button class="primary" id="add-btn">+ Add</button></div>
+      <div class="cfilter" id="cfilter" role="group" aria-label="Show">
+        <button class="on" data-cf="">All</button><button data-cf="dark">Dark</button><button data-cf="review">To review</button><button data-cf="published">Published</button></div>
+      <div class="searchnote" id="searchnote"></div>
+      <div class="pending" id="pending"></div>
+      <div class="list" id="list"></div>
+      <div class="cfoot"><span id="bl-line"><a id="backlog-btn">Data on the system with no record yet</a></span>
+        <span class="pipe" id="pipe-line" title="Pipeline activity">Pipeline: no events yet</span></div>
+    </div>
+  </section>
+  <section class="panel"><div id="detail"><div class="empty">Select a dataset to review it.
+    <div class="hint">New here? <a data-help="arch">See how it works</a>.</div></div></div></section>
+</main>
+<dialog id="add" class="small" aria-label="Add a dataset">
+  <div class="dlg-head"><b style="padding:6px 10px">Add a dataset</b><button class="x" id="add-close" aria-label="Close">Close ✕</button></div>
+  <div class="dlg-body">
+      <p class="sub" style="margin:0 0 10px">Name the folder, then drop the data files and any README, CITATION.cff or LICENSE. Profiling starts as each file lands;
+        a draft record appears in the list, usually within a minute.</p>
       <div class="search"><input type="text" id="folder" placeholder="domain/dataset-name, e.g. climate/my-run"></div>
       <div class="drop" id="drop">Drop data files and docs here</div>
       <details class="try">
@@ -659,27 +946,12 @@ ol.steps { padding-left: 22px; } ol.steps li { margin: 4px 0; }
             (VCF, CC0) and <a href="https://bbbc.broadinstitute.org/BBBC039" target="_blank" rel="noopener">BBBC039</a> (TIFF, CC0).</li>
         </ul>
       </details>
-    </div>
-    <div class="panel">
-      <h2>Find a variable</h2>
-      <div class="search vsearch"><input type="search" id="vq" autocomplete="off" placeholder="e.g. sea_surface_temperature, pt, Celsius">
-        <div class="suggest" id="vsuggest" hidden></div></div>
-    </div>
-    <div class="panel grow">
-      <h2>Datasets</h2>
-      <div class="search"><input type="search" id="q" placeholder="Filter, or press Enter to search by meaning…"></div>
-      <div class="searchnote" id="searchnote"><span>Type to filter · <b>Enter</b> to search by meaning</span></div>
-      <div class="pending" id="pending"></div>
-      <div class="list" id="list"></div>
-    </div>
-    <div class="panel activity">
-      <h2>Pipeline activity</h2>
-      <div class="log" id="log">No events yet.</div>
-    </div>
-  </section>
-  <section class="panel"><div id="detail"><div class="empty">Select a dataset to review it.
-    <div class="hint">New here? <a data-help="arch">See how it works</a>.</div></div></div></section>
-</main>
+  </div>
+</dialog>
+<dialog id="logdlg" class="small" aria-label="Pipeline activity">
+  <div class="dlg-head"><b style="padding:6px 10px">Pipeline activity</b><span class="sub" id="log-mode" style="padding:6px 4px"></span><button class="x" id="log-close" aria-label="Close">Close ✕</button></div>
+  <div class="dlg-body"><div class="log" id="log">No events yet.</div></div>
+</dialog>
 <script>
 const SRC = {header: "From the file", companion: "From the researcher's docs", inferred: "Proposed by the model",
              human: "Entered by a person", none: "Not found"};
@@ -695,6 +967,7 @@ const show = v => v == null ? "" : Array.isArray(v) ? v.map(x => typeof x === "o
 
 async function api(path, opts) { const r = await fetch(path, opts); if (!r.ok) throw new Error(await r.text()); return r.json(); }
 
+let runningOn = "";   // "the VAST cluster" or "this machine", from /api/info
 async function refresh() {
   const d = await api("/api/datasets");
   all = d.datasets;
@@ -702,11 +975,26 @@ async function refresh() {
   renderList();
   updateBacklog();
   const lg = await api("/api/log");
-  if (lg.log.length) $("#log").innerHTML = lg.log.slice().reverse().map(l => `<div>${l.t} ${esc(l.msg)}</div>`).join("");
+  if (lg.log.length) {
+    $("#log").innerHTML = lg.log.slice().reverse().map(l => `<div>${l.t} ${esc(l.msg)}</div>`).join("");
+    const last = lg.log[lg.log.length - 1];
+    $("#pipe-line").textContent = `Pipeline${runningOn ? " on " + runningOn : ""} · last event ${last.t}: ${last.msg}`;
+  } else $("#pipe-line").textContent = `Pipeline${runningOn ? " on " + runningOn : ""} · no events yet`;
   if (current) {
     const s = all.find(x => x.folder === current.folder);
     if (s && s.status !== current.status) open(current.folder);
   }
+}
+// The backlog's size, for the footer line: the catalog is a snapshot, so a look every couple of minutes is enough.
+async function backlogCount() {
+  try {
+    const d = await api("/api/backlog");
+    const live = new Set(all.map(x => x.folder));
+    const dark = d.folders.filter(f => f.status === "dark" && !live.has(f.dataset)).length;
+    $("#bl-line").innerHTML = dark ? `${dark} folder${dark > 1 ? "s" : ""} on the system hold data but have no record yet · <a id="backlog-btn">Review them</a>`
+      : `Everything on the system with data has a record · <a id="backlog-btn">Backlog</a>`;
+  } catch (e) { $("#bl-line").innerHTML = `<a id="backlog-btn">Data on the system with no record yet</a>`; }
+  $("#backlog-btn").onclick = showBacklog;
 }
 
 let semantic = null;  // {query, engine, results} while showing search-by-meaning results
@@ -746,27 +1034,50 @@ function renderList() {
     document.querySelectorAll(".item").forEach(el => el.onclick = () => open(el.dataset.f));
     return;
   }
-  $("#searchnote").innerHTML = `<span>Type to filter · <b>Enter</b> to search by meaning</span>`;
+  $("#searchnote").innerHTML = "";
   const q = $("#q").value.toLowerCase().trim();
-  const rows = all.filter(r => !q || [r.title, r.description, r.domain, r.folder, ...(r.keywords || [])].join(" ").toLowerCase().includes(q));
-  $("#list").innerHTML = rows.map(r => `
+  const typed = all.filter(r => !q || [r.title, r.description, r.domain, r.folder, ...(r.keywords || [])].join(" ").toLowerCase().includes(q));
+  // The filter buttons carry their counts (of what the typed text leaves), and the same groups as the status lines.
+  document.querySelectorAll("#cfilter [data-cf]").forEach(b => { const k = b.dataset.cf, n = k ? typed.filter(r => kind(r) === k).length : typed.length;
+    b.innerHTML = `${{"": "All", dark: "Dark", review: "To review", published: "Published"}[k]}<span class="n">${n}</span>`; b.classList.toggle("on", k === cfilter); });
+  const rows = typed.filter(r => !cfilter || kind(r) === cfilter);
+  $("#list").innerHTML = rows.map(r => { const [cls, line] = statusLine(r); return `
     <div class="item ${current && current.folder === r.folder ? "sel" : ""}" data-f="${esc(r.folder)}">
       <div class="t">${esc(r.title || r.name)}</div>
-      <div class="m"><span class="chip st-${r.status}">${r.status.replace("-", " ")}</span>
-        <span>${esc(r.domain || "")}</span>
-        <span class="score">FAIR ${r.score_before ?? "–"}${r.score_after != null ? " → " + r.score_after : ""}</span></div>
-      ${r.missing.length && r.status !== "published" ? `<div class="needs">Needs ${esc(r.missing.map(label).join(", ").toLowerCase())}</div>` : ""}
-    </div>`).join("") || `<div class="empty">No datasets yet.</div>`;
+      <div class="m ${cls}"><span class="dot ${cls === "warn" ? "s-human" : cls === "good" ? "s-good" : cls === "bad" ? "s-bad" : "s-header"}"></span>${line}</div>
+    </div>`; }).join("") || `<div class="empty">${q || cfilter ? "Nothing matches." : "No datasets yet. Add one, or review the backlog."}</div>`;
   document.querySelectorAll(".item").forEach(el => el.onclick = () => open(el.dataset.f));
 }
+// Three kinds of dataset: published; dark (publishing waits on a licence or creators only a person can give); to review.
+let cfilter = "";
+function kind(r) {
+  if (r.status === "published") return "published";
+  return r.missing.some(k => k === "license" || k === "creators") ? "dark" : "review";
+}
+document.querySelectorAll("#cfilter [data-cf]").forEach(b => b.onclick = () => { cfilter = b.dataset.cf; semantic = null; renderList(); });
+// One plain line per dataset: what state it is in and, if it waits on a person, for what.
+function statusLine(r) {
+  if (r.status === "published") return ["good", `Published · FAIR ${r.score_after ?? r.score_before ?? "–"}`];
+  if (r.status === "rejected") return ["bad", "Rejected"];
+  if (r.missing.length) {
+    const dark = r.missing.some(k => k === "license" || k === "creators");
+    return [dark ? "warn" : "", `${dark ? "Dark data · needs " : "Needs "}${esc(r.missing.map(label).join(", ").toLowerCase())}`];
+  }
+  return ["", `Ready to review · FAIR ${r.score_before ?? "–"}`];
+}
 
-async function open(folder) {
+async function open(folder, keep) {
   const d = await api(`/api/datasets/${folder}/record`);
+  if (keep && (!current || current.folder !== folder)) return;   // the user has moved on
   current = {folder, status: d.record.status, record: d.record};
-  decisions = {}; varDecisions = {};
+  if (!keep) { decisions = {}; varDecisions = {}; }
   renderList();
   renderDetail(d.record, d.score);
   if (d.record.status !== "published") preview();
+  // Tables load after publication: look again until they're done.
+  const ts = d.record.tables_status;
+  if (d.record.status === "published" && (ts === "loading" || (ts === "stalled" && Date.now() < retryUntil)))
+    setTimeout(() => open(folder, true), 3000);
 }
 
 function editor(name, f) {
@@ -777,56 +1088,70 @@ function editor(name, f) {
   return `<input type="text" data-edit="${name}" value="${esc(show(v))}">`;
 }
 
+const TABULAR = ["CSV", "Parquet", "FITS", "NetCDF", "VCF", "ROOT"];
+// One line under each value: where it came from, as a coloured dot and the evidence; the legend names the colours.
+function sourceLine(f) {
+  const bits = [];
+  if (f.evidence) bits.push(evidence(f.evidence)); else bits.push(esc(SRC[f.source] || f.source || ""));
+  if (f.source === "human" && f.by) bits.push(esc(f.by));
+  if (f.source === "inferred") bits.push(`${Math.round((f.confidence || 0) * 100)}% sure`);
+  return `<div class="src"><span class="dot s-${esc(f.source)}" title="${esc(SRC[f.source] || f.source)}"></span>${bits.join(" · ")}</div>`;
+}
 function renderDetail(r, score) {
   const published = r.status === "published";
   const names = [...ORDER.filter(k => r.fields[k]), ...Object.keys(r.fields).filter(k => !ORDER.includes(k))];
+  const sources = new Set(names.map(k => r.fields[k].source));
   const rows = names.map(k => {
     const f = r.fields[k];
     const editable = !published && !["encodingFormat", "conformsTo"].includes(k);
-    const c = Math.round((f.confidence || 0) * 100);
-    const color = f.source === "inferred" ? "var(--inferred)" : f.source === "none" ? "var(--none)" : "var(--good)";
+    const open = editable && f.status !== "accepted";   // waits on a person: highlighted, with controls
     const text = show(f.value), long = text.length > 320;
-    return `<tr data-row="${k}">
-      <td class="f" title="${k}">${label(k)}</td>
-      <td class="v">${editable && f.status !== "accepted" ? editor(k, f)
-        : `<div class="val${long ? " clamp" : ""}">${esc(text) || `<span class="sub">—</span>`}</div>${long ? `<button class="link more">Show more</button>` : ""}`}</td>
-      <td class="src"><span class="srcchip s-${f.source}">${SRC[f.source] || f.source}</span>
-        ${f.evidence ? `<div class="ev">${evidence(f.evidence)}</div>` : ""}
-        ${f.source === "inferred" ? `<div class="conf" title="model confidence"><span><i style="width:${c}%;background:${color}"></i></span>${c}%</div>` : ""}</td>
-      <td class="act">${editable && f.status !== "accepted" ? `<span class="seg"><button data-a="accept" data-k="${k}">Accept</button><button data-a="reject" data-k="${k}">Reject</button></span>`
-                       : `<span class="chip st-${f.status}">${f.status === "accepted" ? "✓ " : ""}${f.status}</span>`}</td></tr>`;
+    return `<div class="mrow${open ? " todo" : ""}" data-row="${k}">
+      <div class="k" title="${k}">${label(k)}</div>
+      <div class="v">${open ? editor(k, f)
+        : `<div class="val${long ? " clamp" : ""}">${esc(text) || `<span class="sub">${f.source === "none" ? "Not stated anywhere in the folder" : "—"}</span>`}</div>${long ? `<button class="link more">Show more</button>` : ""}`}
+        ${sourceLine(f)}</div>
+      <div class="act">${open ? `<span class="seg"><button data-a="accept" data-k="${k}">Accept</button><button data-a="reject" data-k="${k}">Reject</button></span>`
+                       : f.status === "accepted" ? `<span class="ok" title="accepted">✓</span>` : f.status === "rejected" ? `<span class="sub">rejected</span>` : ""}</div></div>`;
   }).join("");
   const inferredVars = r.variables.filter(v => v.description);
   const varRows = r.variables.slice(0, 120).map(v => {
     const d = v.description;
-    return `<tr><td class="f">${esc(v.name)}</td><td>${esc(v.long_name || (d && d.value) || "")}${v.units ? ` <span class="chip">${esc(v.units)}</span>` : ""}${v.standard_name ? ` <span class="chip">${esc(v.standard_name)}</span>` : ""}</td>
-      <td class="src">${d ? `<span class="srcchip s-inferred">${SRC.inferred}</span>` : v.long_name || v.standard_name ? `<span class="srcchip s-header">${SRC.header}</span>` : ""}</td>
-      <td class="act">${d && !published && d.status === "proposed" ? `<span class="seg"><button data-va="accepted" data-v="${esc(v.name)}">Accept</button><button data-va="rejected" data-v="${esc(v.name)}">Reject</button></span>` : d ? `<span class="chip st-${d.status}">${d.status}</span>` : ""}</td></tr>`;
+    return `<tr><td class="f">${esc(v.name)}</td><td>${esc(v.long_name || (d && d.value) || "")}${v.units ? ` <span class="chip">${esc(v.units)}</span>` : ""}${v.standard_name ? ` <span class="chip">${esc(v.standard_name)}</span>` : ""}
+      ${d ? `<div class="src"><span class="dot s-inferred"></span>${d.status === "accepted" ? "proposed by the model, accepted" : "proposed by the model"}</div>` : ""}</td>
+      <td class="act">${d && !published && d.status === "proposed" ? `<span class="seg"><button data-va="accepted" data-v="${esc(v.name)}">Accept</button><button data-va="rejected" data-v="${esc(v.name)}">Reject</button></span>` : d && d.status === "accepted" ? `<span class="ok">✓</span>` : ""}</td></tr>`;
   }).join("");
+  const fileRows = r.files.map(f => `<tr><td class="f">${esc(f.name)}</td><td>${esc(f.format || "")}</td><td>${fmtBytes(f.size)}</td><td><code title="${esc(f.sha256)}">${esc((f.sha256 || "").slice(0, 12))}…</code></td></tr>`).join("");
+  const size = r.files.reduce((n, f) => n + (f.size || 0), 0), tabular = r.files.some(f => TABULAR.includes(f.format));
+  const legend = [["header", "from the file"], ["companion", "from the researcher's documents"], ["inferred", "proposed by the model"], ["human", "entered by a person"], ["none", "not found"]]
+    .filter(([s]) => sources.has(s)).map(([s, t]) => `<span><span class="dot s-${s}"></span>${t}</span>`).join("");
   $("#detail").innerHTML = `<div class="detail">
-    <div class="top">
-      <div><h2>${esc((r.fields.title || {}).value || r.name)}</h2>
-        <div class="path">${esc(r.folder)} · ${r.files.length} file(s) · curated ${esc(r.generated)}</div></div>
-      <div class="scores">
-        <div class="big"><b>${r.score_before ?? "–"}</b><span>Before</span></div>
-        <div class="big after"><b id="s-after">${r.score_after ?? "…"}</b><span>${published ? "Published" : "On publish"}</span></div>
-      </div>
-    </div>
-    <div class="fair" id="fair">${fairBars(score)}</div>
+    <h2 class="dt">${esc((r.fields.title || {}).value || r.name)}</h2>
+    <div class="where">${esc(r.folder)} · ${r.files.length} file${r.files.length === 1 ? "" : "s"} · ${fmtBytes(size)}${published
+      ? ` · published as <code>${esc(r.pid)}</code> · <a href="/id/${esc(r.pid)}" target="_blank">Landing page</a> · <a href="/id/${esc(r.pid)}/ro-crate-metadata.json" target="_blank">RO-Crate</a> · <a href="/id/${esc(r.pid)}/croissant.json" target="_blank">Croissant</a>`
+      : ` · curated ${esc((r.generated || "").slice(0, 16).replace("T", " "))}`}</div>
+    <div class="fairstrip"><div><div class="lbl">FAIR score</div><div class="bigs">${r.score_before ?? "–"}<i>→</i><b id="s-after">${r.score_after ?? "…"}</b><span class="sub">${published ? "published" : "on publish"}</span></div></div>
+      <div class="bars" id="fair">${fairBars(score)}</div></div>
     <div id="call"></div>
-    ${r.duplicates ? `<div class="callout">The same files are already in <b>${esc(r.duplicates.join(", "))}</b>. Check whether this is a copy before publishing it again.</div>` : ""}
-    ${published ? `<div class="callout ok">Published as <b>${esc(r.pid)}</b>. <span class="links">
-        <a href="/id/${esc(r.pid)}" target="_blank">Landing page</a>
-        <a href="/id/${esc(r.pid)}/ro-crate-metadata.json" target="_blank">RO-Crate</a>
-        <a href="/id/${esc(r.pid)}/croissant.json" target="_blank">Croissant</a></span></div>` : ""}
-    <div class="section-title">Metadata</div>
-    <table class="fields"><thead><tr><th>Field</th><th>Value</th><th>Where it came from</th><th></th></tr></thead><tbody>${rows}</tbody></table>
-    <details ${inferredVars.length && !published ? "open" : ""}><summary>Variables <span class="chip">${r.variables.length}</span>${inferredVars.length ? `<span class="sub">${inferredVars.length} described by the model</span>` : ""}</summary>
-      <table class="vars"><tbody>${varRows}</tbody></table></details>
-    <details open><summary>FAIR checks</summary><div class="checks" id="checks">${checks(score)}</div></details>
+    ${r.duplicates ? `<div class="callout">The same files are also in <b>${esc(r.duplicates.join(", "))}</b>: check it isn't a copy before publishing again.</div>` : ""}
+    ${published ? curateTables(r) : ""}
+    <h3 class="sec">What we know about it <span class="legend">${legend}</span></h3>
+    <div class="meta">${rows}</div>
+    <nav class="dtabs" aria-label="More about this dataset">
+      <button class="on" data-dt="vars">Variables<span class="n">${r.variables.length}</span></button>
+      <button data-dt="files">Files<span class="n">${r.files.length}</span></button>
+      <button data-dt="checks">FAIR checks<span class="n">${score.checks.length}</span></button>
+    </nav>
+    <div class="dpane" data-dp="vars">${inferredVars.length && !published ? `<p class="sub" style="margin:0 0 8px">${inferredVars.length} described by the model; accept or reject each, or leave them to be accepted at publish.</p>` : ""}<table class="vars"><tbody>${varRows}</tbody></table></div>
+    <div class="dpane" data-dp="files" hidden><table class="vars"><tbody>${fileRows}</tbody></table></div>
+    <div class="dpane" data-dp="checks" hidden><div class="checks" id="checks">${checks(score)}</div></div>
     ${published ? "" : `<div class="pubbar"><label for="reviewer">Reviewer</label><input type="text" id="reviewer" placeholder="your name or ORCID" value="${esc(localStorage.getItem("reviewer") || "")}">
+      ${tabular ? `<label class="tog" title="The files stay where they are either way; this also loads the tabular ones into VAST DataBase so they can be asked questions in place"><input type="checkbox" id="pub-tables" checked> Also load as tables in VAST DataBase</label>` : ""}
       <button class="primary" id="publish">Publish</button><span id="pubmsg" class="sub"></span></div>`}
   </div>`;
+  document.querySelectorAll("#detail .dtabs button").forEach(b => b.onclick = () => {
+    document.querySelectorAll("#detail .dtabs button").forEach(x => x.classList.toggle("on", x === b));
+    document.querySelectorAll("#detail .dpane").forEach(p => p.hidden = p.dataset.dp !== b.dataset.dt); });
   document.querySelectorAll("[data-a]").forEach(b => b.onclick = () => decide(b.dataset.k, b.dataset.a));
   document.querySelectorAll("[data-va]").forEach(b => b.onclick = () => { varDecisions[b.dataset.v] = b.dataset.va; mark(b, b.dataset.va === "accepted"); preview(); });
   document.querySelectorAll("[data-edit]").forEach(el => el.oninput = () => { decisions[el.dataset.edit] = {action: "edit", value: parse(el.dataset.edit, el.value)}; highlight(el.dataset.edit, "edit"); preview(); });
@@ -835,6 +1160,219 @@ function renderDetail(r, score) {
   document.querySelectorAll("#detail textarea").forEach(t => { const fit = () => { t.style.height = "auto"; t.style.height = t.scrollHeight + 2 + "px"; };
     fit(); t.addEventListener("input", fit); });
   const pb = $("#publish"); if (pb) pb.onclick = publish;
+  wireCurateLinks();
+  const tr = $("#t-retry"); if (tr) tr.onclick = async () => { tr.disabled = true; tr.textContent = "Retrying…";
+    retryUntil = Date.now() + 120000;
+    await api(`/api/datasets/${current.folder}/tables/retry`, {method: "POST"}); setTimeout(() => open(current.folder, true), 1500); };
+}
+
+// ---------------------------------------------------------------- the data, queried in place
+const OPS = ["=", "!=", "<", "<=", ">", ">="];
+let qState = {}, retryUntil = 0;
+// In Curate: whether the data became tables, and anything that needs a curator; querying is in Find data.
+function curateTables(r) {
+  if ((r.tables || []).length) {
+    const rows = r.tables.reduce((n, t) => n + t.rows, 0), notes = (r.table_notes || []).length;
+    return `<div class="callout ok">Loaded as ${r.tables.length} table${r.tables.length > 1 ? "s" : ""} (${rows.toLocaleString()} rows) in VAST DataBase, so it can be asked questions in place.
+      <a href="#find/${esc(r.key_prefix)}" data-find="${esc(r.key_prefix)}">Ask it in Find data</a>${notes ? ` · <span class="sub">${notes} file(s) not loaded: see Find data</span>` : ""}</div>`;
+  }
+  if (r.tables_wanted === false) return `<p class="sub tline">Published as files only, by the curator's choice: not loaded into VAST DataBase.</p>`;
+  return tablesSection(r);
+}
+function tablesSection(r) {
+  const notes = r.table_notes || [];
+  const noteList = notes.length ? `<ul class="tnotes">${notes.map(n => `<li>${esc(n)}</li>`).join("")}</ul>` : "";
+  if (r.tables_status === "loading")
+    return `<div class="callout info">Loading the data into VAST DataBase as tables, so it can be queried in place. The dataset is
+      already published; this only adds a way to use it.</div>`;
+  if ((r.tables || []).length)
+    return queryPanel(r) + (notes.length ? `<details class="tnotes-box"><summary>Not everything became a table <span class="chip">${notes.length}</span></summary>${noteList}</details>` : "");
+  if (r.tables_status === "stalled")
+    return `<div class="callout">Loading the data as tables didn't finish. The dataset is published as files.
+      <button id="t-retry" style="margin-left:8px">Try loading again</button></div>`;
+  return notes.length ? `<details class="tnotes-box"><summary>Not available as a table</summary><p class="sub" style="margin:8px 14px 0">The dataset is published
+    as files; these are why its data wasn't also loaded as a table.</p>${noteList}</details>` : "";
+}
+function queryPanel(r) {
+  const rows = (r.tables || []).reduce((n, t) => n + (t.rows || 0), 0);
+  return `<section class="qbox"><div class="qhead"><h3>Ask this dataset</h3>
+    <span class="sub">${rows.toLocaleString()} rows in VAST DataBase · answered in place, nothing downloaded</span></div>
+    <div class="query" id="query"></div></section>`;
+}
+// In the grid, whole numbers exactly as stored (a year is 2000, not 2,000); summaries keep separators.
+function cell(v, col) { return Number.isInteger(v) && !/^(sum|count|avg|min|max)(_|$)/.test(col || "") ? String(v) : fmtNum(v); }
+function fmtNum(v) { return typeof v === "number" ? (Number.isInteger(v) ? v.toLocaleString() : (+v.toPrecision(6)).toLocaleString(undefined, {maximumFractionDigits: 6})) : esc(v ?? ""); }
+function wireQuery(r) {
+  const t = r.tables.find(t => t.table === qState.table) || r.tables[0];
+  if (qState.table !== t.table || !qState.cols) qState = {table: t.table, cols: t.columns.slice(0, 6).map(c => c.name), where: [], limit: 20,
+    agg: {fn: "", column: "", by: ""}, order: {column: "", desc: true}, question: qState.question || ""};
+  if (!qState.order) qState.order = {column: "", desc: true};
+  const aggName = a => a.fn ? (a.fn !== "count" && a.column ? `${a.fn}_${a.column}` : a.fn === "count" && a.column ? `count_${a.column}` : a.fn) : "";
+  const sortable = qState.agg.fn ? [qState.agg.by, aggName(qState.agg)].filter(Boolean) : t.columns.map(c => c.name);
+  const numeric = t.columns.filter(c => /^(int|uint|float|double)/.test(c.type));
+  const ex = askExample(t);
+  const opt = (v, cur) => `<option ${v === cur ? "selected" : ""}>${esc(v)}</option>`;
+  $("#query").innerHTML = `
+    <div class="row ask"><input type="text" id="q-ask" value="${esc(qState.question)}" placeholder="${esc(ex)}" aria-label="Ask the data a question">
+      <button class="primary" id="q-ask-btn">Ask</button></div>
+    <div class="sugg" id="q-sugg"></div>
+    <div id="q-read"></div>
+    <details class="refine" ${qState.refine ? "open" : ""}><summary>${qState.question ? "Adjust the query" : "Or build the query by hand"}<span class="sub">table, columns, filters, summary, sort</span></summary>
+    ${r.tables.length > 1 ? `<div class="row"><label>Table</label><select id="q-table">${r.tables.map(x => `<option value="${esc(x.table)}" ${x.table === t.table ? "selected" : ""}>${esc(x.part || x.table)} · ${x.rows.toLocaleString()} rows</option>`).join("")}</select></div>` : ""}
+    <div class="row"><label>Columns</label><div class="cols">${t.columns.map(c => `<label class="${qState.cols.includes(c.name) ? "on" : ""}" title="${esc([c.description, c.units, c.type].filter(Boolean).join(" · "))}">
+      <input type="checkbox" data-qc="${esc(c.name)}" ${qState.cols.includes(c.name) ? "checked" : ""}>${esc(c.name)}${c.units ? ` <span class="sub">${esc(c.units)}</span>` : ""}</label>`).join("")}</div></div>
+    <div class="row"><label>Where</label><div class="flt" id="q-where">${qState.where.map((w, i) => `<span class="flt">
+      <select data-qw="${i}" data-k="col">${t.columns.map(c => opt(c.name, w.col)).join("")}</select>
+      <select data-qw="${i}" data-k="op">${OPS.map(o => opt(o, w.op)).join("")}</select>
+      <input type="text" data-qw="${i}" data-k="val" value="${esc(w.val)}" placeholder="${esc(hint(t, w.col))}">
+      <button class="link" data-qdel="${i}" title="Remove">✕</button></span>`).join("")}
+      <button id="q-add">+ Filter</button></div></div>
+    <div class="row"><label>Summarise</label><div class="flt">
+      <select id="q-fn">${[["", "no: show rows"], ["avg", "average"], ["min", "minimum"], ["max", "maximum"], ["sum", "total"], ["count", "count"]]
+        .map(([v, l]) => `<option value="${v}" ${qState.agg.fn === v ? "selected" : ""}>${l}</option>`).join("")}</select>
+      ${qState.agg.fn && qState.agg.fn !== "count" ? `<span class="sub">of</span><select id="q-agcol">${(["avg", "sum"].includes(qState.agg.fn) ? numeric : t.columns)
+        .map(c => `<option ${c.name === qState.agg.column ? "selected" : ""}>${esc(c.name)}</option>`).join("")}</select>` : ""}
+      ${qState.agg.fn ? `<span class="sub">per</span><select id="q-by"><option value="">(all matching rows)</option>${t.columns
+        .map(c => `<option ${c.name === qState.agg.by ? "selected" : ""}>${esc(c.name)}</option>`).join("")}</select>` : ""}</div></div>
+    <div class="row"><label>Sort</label><div class="flt"><select id="q-order"><option value="">(as stored)</option>${sortable
+        .map(c => `<option ${c === qState.order.column ? "selected" : ""}>${esc(c)}</option>`).join("")}</select>
+      <select id="q-desc"><option value="1" ${qState.order.desc ? "selected" : ""}>highest first</option><option value="0" ${qState.order.desc ? "" : "selected"}>lowest first</option></select></div></div>
+    <div class="row"><label>Rows</label><input type="number" id="q-limit" min="1" max="10000" value="${qState.limit}">
+      <button id="q-run">Run</button><span class="sub" id="q-msg"></span></div>
+    <p class="tmeta">${t.rows.toLocaleString()} rows × ${t.columns.length} columns in <code>${esc(t.location)}</code>, from ${esc(t.source)}</p>
+    </details>
+    <div id="q-out"></div>`;
+  $("#query .refine").ontoggle = e => qState.refine = e.target.open;
+  const tsel = $("#q-table"); if (tsel) tsel.onchange = () => { qState.table = tsel.value; qState.cols = null; wireQuery(r); };
+  document.querySelectorAll("[data-qc]").forEach(cb => cb.onchange = () => {
+    qState.cols = t.columns.map(c => c.name).filter(n => n === cb.dataset.qc ? cb.checked : qState.cols.includes(n));
+    cb.parentElement.classList.toggle("on", cb.checked); });
+  document.querySelectorAll("[data-qw]").forEach(el => el.oninput = () => { qState.where[el.dataset.qw][el.dataset.k] = el.value;
+    if (el.dataset.k === "col") wireQuery(r); });
+  document.querySelectorAll("[data-qdel]").forEach(b => b.onclick = () => { qState.where.splice(+b.dataset.qdel, 1); wireQuery(r); });
+  $("#q-add").onclick = () => { const c = t.columns.find(c => c.min != null) || t.columns[0];
+    qState.where.push({col: c.name, op: ">=", val: ""}); wireQuery(r); };
+  $("#q-limit").oninput = e => qState.limit = +e.target.value || 20;
+  $("#q-run").onclick = () => runQuery(r, t);
+  $("#q-fn").onchange = e => { qState.agg.fn = e.target.value; qState.order.column = "";
+    if (qState.agg.fn && qState.agg.fn !== "count" && !qState.agg.column) qState.agg.column = (numeric[0] || t.columns[0]).name;
+    wireQuery(r); };
+  const ac = $("#q-agcol"); if (ac) { if (!qState.agg.column) qState.agg.column = ac.value; ac.onchange = () => qState.agg.column = ac.value; }
+  const by = $("#q-by"); if (by) by.onchange = () => { qState.agg.by = by.value; wireQuery(r); };
+  $("#q-order").onchange = e => qState.order.column = e.target.value;
+  $("#q-desc").onchange = e => qState.order.desc = e.target.value === "1";
+  renderSuggestions(r);
+  const ask = () => askQuestion(r);
+  $("#q-ask-btn").onclick = ask;
+  $("#q-ask").onkeydown = e => { if (e.key === "Enter") ask(); };
+  $("#q-ask").oninput = e => qState.question = e.target.value;
+}
+function askExample(t) { return "An average, a count or the top 5, with any conditions…"; }
+async function askQuestion(r) {
+  const question = ($("#q-ask").value || "").trim();
+  if (!question) return;
+  qState.question = question;
+  $("#q-read").innerHTML = `<div class="meta">Reading the question…</div>`;
+  try {
+    const d = await api("/api/ask", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({folder: r.key_prefix, question})});
+    if (d.unanswerable) { $("#q-read").innerHTML = `<div class="callout">These tables can't answer that: ${esc(d.unanswerable)}</div>`; return; }
+    applyReading(r, d.interpreted, question, d.model);
+    renderResult(d, r, r.tables.find(x => x.table === d.interpreted.table), d.interpreted.where);
+  } catch (e) { $("#q-read").innerHTML = `<div class="callout">${esc(String(e.message).replace(/^\{"detail":"|"\}$/g, "").slice(0, 300))}</div>`; }
+}
+function applyReading(r, q, question, model) {
+    qState = {table: q.table, cols: q.columns.length ? q.columns : (qState.cols || []), limit: q.limit, question,
+      where: q.where.map(w => { const m = w.match(/^\s*(\w+)\s*(<=|>=|!=|=|<|>)\s*(.*?)\s*$/); return m ? {col: m[1], op: m[2], val: m[3].replace(/^(['"])(.*)\1$/, "$2")} : null; }).filter(Boolean),
+      agg: q.aggregate ? {fn: q.aggregate.fn, column: q.aggregate.column || "", by: q.aggregate.by || ""} : {fn: "", column: "", by: ""},
+      order: q.order ? {column: q.order.column, desc: q.order.desc} : {column: "", desc: true}};
+    wireQuery(r);
+    const sg = $("#q-sugg"); if (sg) sg.classList.add("fold");
+    const t = r.tables.find(x => x.table === q.table);
+    $("#q-read").innerHTML = `<p class="readas"><span class="sub">Read as</span> ${esc(readAs(t))}
+      <button class="link" id="q-why" title="${esc(q.explanation || "")}">why?</button></p>
+      <p class="sub readnote" hidden>${esc(q.explanation || "")} ${model === "suggested" ? "A suggested question, proposed by the model" : `Proposed by the model (${esc(model)})`} from the columns' reviewed units and
+      meanings, and checked against the table. Change it under Refine.</p>`;
+    $("#q-why").onclick = () => { const n = $("#q-read .readnote"); n.hidden = !n.hidden; };
+}
+// Example questions from the model, each with a query already checked against the tables: running one
+// needs no second model call. Loaded once per dataset, in the background.
+const suggCache = {};
+async function renderSuggestions(r) {
+  const box = $("#q-sugg"); if (!box) return;
+  const key = r.key_prefix + "@" + r.published, got = suggCache[key];
+  if (!got) {
+    box.innerHTML = `<span class="sub">Suggesting questions…</span>`;
+    suggCache[key] = "loading";
+    try { suggCache[key] = (await api(`/api/suggest/${r.key_prefix}`)).suggestions || []; } catch { suggCache[key] = []; }
+    if (fstate.folder === r.key_prefix) renderSuggestions(r);
+    return;
+  }
+  if (got === "loading") return;
+  // Three to start with; the rest on request; folded to one line once a question has been asked.
+  box.classList.toggle("fold", !!qState.question);
+  box.innerHTML = got.length ? `<button class="link sub" id="q-sugg-t">${qState.question ? "Other questions to try" : "Try one of these"}</button>`
+    + got.map((x, i) => `<button class="sq${i >= 3 ? " extra" : ""}" data-sq="${i}">${esc(x.question)}</button>`).join("")
+    + (got.length > 3 ? `<button class="link sub moreq" id="q-sugg-more">More questions ▸</button>` : "") : "";
+  box.querySelectorAll("[data-sq]").forEach(b => b.onclick = () => runSuggestion(r, got[+b.dataset.sq]));
+  $("#q-sugg-t").onclick = () => box.classList.toggle("fold");
+  const more = $("#q-sugg-more"); if (more) more.onclick = () => { box.classList.toggle("all"); more.textContent = box.classList.contains("all") ? "Fewer questions ▴" : "More questions ▸"; };
+}
+async function runSuggestion(r, x) {
+  const q = x.query;
+  $("#q-ask").value = x.question;
+  applyReading(r, q, x.question, "suggested");
+  const t = r.tables.find(t => t.table === q.table);
+  try {
+    const d = await api("/api/query", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(
+      {folder: r.key_prefix, table: q.table, columns: q.columns, where: q.where, limit: q.limit, summary: !q.aggregate,
+       aggregate: q.aggregate, order: q.order})});
+    renderResult(d, r, t, q.where);
+  } catch (e) { $("#q-read").innerHTML = `<div class="callout">${esc(String(e.message).slice(0, 200))}</div>`; }
+}
+function readAs(t) {
+  const parts = qState.where.filter(w => String(w.val).trim() !== "").map(w => `${w.col} ${w.op} ${w.val}`);
+  const a = qState.agg;
+  if (a.fn) parts.push(`${{avg: "average", min: "minimum", max: "maximum", sum: "total", count: "count"}[a.fn]}${a.fn !== "count" && a.column ? " of " + a.column : ""}${a.by ? " per " + a.by : ""}`);
+  if (qState.order && qState.order.column) parts.push(`${qState.order.desc ? "highest" : "lowest"} ${qState.order.column} first`);
+  return parts.length ? parts.join(" · ") : `${(qState.cols || []).length} of ${t.columns.length} columns, first ${qState.limit} rows`;
+}
+function hint(t, col) { const c = t.columns.find(c => c.name === col); return c && c.min != null ? `${c.min} to ${c.max}` : c ? c.type : ""; }
+async function runQuery(r, t) {
+  $("#q-msg").textContent = "Running…";
+  const where = qState.where.filter(w => String(w.val).trim() !== "").map(w => `${w.col}${w.op}${w.val}`);
+  try {
+    const d = await api("/api/query", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(
+      {folder: r.key_prefix, table: t.table, columns: qState.cols, where, limit: qState.limit, summary: true,
+       aggregate: qState.agg.fn ? qState.agg : null, order: qState.order.column ? qState.order : null})});
+    $("#q-msg").textContent = "";
+    renderResult(d, r, t, where);
+  } catch (e) { $("#q-msg").textContent = String(e.message).slice(0, 200); }
+}
+function renderResult(d, r, t, where) {
+    const meta = Object.fromEntries(t.columns.map(c => [c.name, c]));
+    if (d.aggregate && d.aggregate.column && d.aggregate.fn !== "count")
+      meta[d.columns[d.columns.length - 1]] = {units: (meta[d.aggregate.column] || {}).units, description: `${d.aggregate.fn} of ${d.aggregate.column}`};
+    const qs = new URLSearchParams([...(d.aggregate ? [["agg", d.aggregate.fn + (d.aggregate.column ? ":" + d.aggregate.column : "")], ...(d.aggregate.by ? [["by", d.aggregate.by]] : [])]
+      : [["columns", d.columns.join(",")]]), ...where.map(w => ["where", w]),
+      ...(d.order ? [["order", (d.order.desc ? "-" : "") + d.order.column]] : []), ["format", "csv"]]);
+    const one = d.aggregate && !d.aggregate.by && d.rows.length === 1 ? d.rows[0][d.columns[0]] : undefined;
+    if (one !== undefined) {
+      const m = meta[d.columns[0]] || {}, a = d.aggregate;
+      $("#q-out").innerHTML = `<div class="answer"><b>${one === null ? "no value" : fmtNum(typeof one === "number" && !Number.isInteger(one) ? +one.toPrecision(4) : one)}${m.units && a.fn !== "count" ? " " + esc(m.units) : ""}</b>
+        <span>${esc({avg: "average", min: "minimum", max: "maximum", sum: "total", count: "count"}[a.fn])}${a.column && a.fn !== "count" ? " " + esc(a.column) : ""}
+          over ${d.matched.toLocaleString()} of ${t.rows.toLocaleString()} rows · ${d.ms} ms · ${esc(d.engine)}</span></div>
+        <details class="ascode"><summary>As code</summary><div class="meta">SQL, for Trino run by VAST on the cluster's own CNodes (not set up in this demo, which queries through the VAST DB Python SDK):</div><pre>${esc(d.sql)}</pre></details>`;
+      return;
+    }
+    $("#q-out").innerHTML = `
+      <div class="meta">${d.matched.toLocaleString()} of ${t.rows.toLocaleString()} rows match · ${d.aggregate ? `${d.rows.length.toLocaleString()} result row(s)` : `showing ${d.rows.length.toLocaleString()}`} · ${d.ms} ms · ${esc(d.engine)}</div>
+      ${d.summary.length ? `<div class="stats">${d.summary.filter(s => !meta[s.column] || meta[s.column].source !== null).map(s => `<div class="stat" title="min ${s.min} · max ${s.max}"><span class="sub">mean ${esc(s.column)}${meta[s.column] && meta[s.column].units ? ` (${esc(meta[s.column].units)})` : ""}</span><b>${fmtNum(s.mean)}</b><span class="sub">${fmtNum(s.min)} to ${fmtNum(s.max)}</span></div>`).join("")}</div>` : ""}
+      <div class="grid"><table><thead><tr>${d.columns.map(c => `<th title="${esc((meta[c] || {}).description || "")}">${esc(c)}${(meta[c] || {}).units ? `<small>${esc(meta[c].units)}</small>` : ""}</th>`).join("")}</tr></thead>
+        <tbody>${d.rows.map(row => `<tr>${d.columns.map(c => `<td>${cell(row[c], c)}</td>`).join("")}</tr>`).join("") || `<tr><td>No rows match.</td></tr>`}</tbody></table></div>
+      <details class="ascode"><summary>As code</summary>
+        <div class="meta">SQL, for Trino run by VAST on the cluster's own CNodes (not set up in this demo, which queries through the VAST DB Python SDK):</div><pre>${esc(d.sql)}</pre>
+        <div class="meta">HTTP: <a href="/id/${esc(r.pid)}/tables/${esc(t.table)}?${esc(qs.toString())}" target="_blank">/id/${esc(r.pid)}/tables/${esc(t.table)}?${esc(qs.toString())}</a></div>
+      </details>`;
 }
 // Field names as people say them; the schema.org name stays in the tooltip.
 const LABELS = {license: "Licence", measurementTechnique: "Measurement technique", temporalCoverage: "Temporal coverage",
@@ -864,14 +1402,14 @@ function decide(k, action) {
 
 function highlight(k, action) {
   document.querySelectorAll(`[data-k="${k}"]`).forEach(b => b.className = (b.dataset.a === action || (action === "edit" && b.dataset.a === "accept")) ? (b.dataset.a === "accept" ? "on" : "off") : "");
-  const tr = document.querySelector(`tr[data-row="${k}"]`);
+  const tr = document.querySelector(`.mrow[data-row="${k}"]`);
   if (tr) { tr.classList.toggle("decided-accept", action !== "reject"); tr.classList.toggle("decided-reject", action === "reject"); }
 }
 function mark(btn, ok) { btn.parentElement.querySelectorAll("button").forEach(b => b.className = ""); btn.className = ok ? "on" : "off"; }
 
 function fairBars(s) {
   const label = {F: "Findable", A: "Accessible", I: "Interoperable", R: "Reusable"};
-  return "FAIR".split("").map(p => `<div><span>${label[p]}</span><b class="score">${s.by_principle[p]}</b><div class="bar"><i style="width:${s.by_principle[p]}%"></i></div></div>`).join("");
+  return "FAIR".split("").map(p => `<div><span>${label[p]}</span><b>${s.by_principle[p]}</b><div class="bar"><i style="width:${s.by_principle[p]}%"></i></div></div>`).join("");
 }
 function checks(s) {
   return s.checks.map(c => `<div class="check"><span class="${c.pass ? "ok" : "no"}">${c.pass ? "✓" : "○"}</span>
@@ -888,7 +1426,7 @@ function preview() {
     $("#fair").innerHTML = fairBars(p.on_publish);
     $("#checks").innerHTML = checks(p.on_publish);
     $("#call").innerHTML = p.missing.length
-      ? `<div class="callout">Needs a person before it can be published: <b>${p.missing.join(", ")}</b>. These are never guessed: they must come from the data, the researchers' documents, or you.</div>` : "";
+      ? `<div class="callout">Needs a person before it can be published: <b>${p.missing.map(label).join(", ").toLowerCase()}</b>. These are never guessed: they come from the data, the researchers' documents, or you.</div>` : "";
     const pb = $("#publish"); if (pb) pb.disabled = p.missing.length > 0;
   }, 150);
 }
@@ -899,10 +1437,16 @@ async function publish() {
   // Accepting at publish: anything still proposed that the reviewer left alone is accepted as shown.
   for (const [k, f] of Object.entries(current.record.fields)) if (f.status === "proposed" && !decisions[k]) decisions[k] = {action: "accept"};
   for (const v of current.record.variables) if (v.description && v.description.status === "proposed" && !varDecisions[v.name]) varDecisions[v.name] = "accepted";
+  const tb = $("#pub-tables"), tablesWanted = tb ? tb.checked : true;
   $("#publish").disabled = true; $("#pubmsg").textContent = "Sent to the pipeline…";
   await api(`/api/datasets/${current.folder}/review`, {method: "POST", headers: {"Content-Type": "application/json"},
-    body: JSON.stringify({reviewer, decisions, variables: varDecisions})});
+    body: JSON.stringify({reviewer, decisions, variables: varDecisions, tables: tablesWanted})});
 }
+// Adding a dataset and the pipeline log live in dialogs, so the list is the one thing in the side column.
+$("#add-btn").onclick = () => $("#add").showModal(); $("#add-close").onclick = () => $("#add").close();
+$("#add").addEventListener("click", e => { if (e.target === $("#add")) $("#add").close(); });
+$("#pipe-line").onclick = () => $("#logdlg").showModal(); $("#log-close").onclick = () => $("#logdlg").close();
+$("#logdlg").addEventListener("click", e => { if (e.target === $("#logdlg")) $("#logdlg").close(); });
 
 const drop = $("#drop");
 drop.ondragover = e => { e.preventDefault(); drop.classList.add("hot"); };
@@ -946,7 +1490,7 @@ $("#theme").onclick = () => setTheme(THEMES[(THEMES.indexOf(document.documentEle
 setTheme(document.documentElement.dataset.theme || "system");
 
 // Backlog: dark data found through VAST Catalog
-const fmtBytes = n => n >= 1e9 ? (n / 1e9).toFixed(1) + " GB" : n >= 1e6 ? (n / 1e6).toFixed(1) + " MB" : Math.round(n / 1e3) + " kB";
+const fmtBytes = n => n >= 1e9 ? (n / 1e9).toFixed(1) + " GB" : n >= 1e6 ? (n / 1e6).toFixed(1) + " MB" : n >= 1e3 ? Math.round(n / 1e3) + " kB" : n + " B";
 async function showBacklog() {
   current = null; semantic = null; renderList();
   $("#detail").innerHTML = `<div class="detail"><div class="empty">Querying the catalog…</div></div>`;
@@ -1017,6 +1561,7 @@ function updateBacklog() {
   if (changed) wireBacklog();
 }
 $("#backlog-btn").onclick = showBacklog;
+setTimeout(backlogCount, 1500); setInterval(backlogCount, 120000);
 
 // Help menu and dialog
 const menu = $("#help-menu"), dlg = $("#help");
@@ -1039,42 +1584,204 @@ const hm = location.hash.match(/^#help-(arch|review|score|data|model|prod)$/); i
 
 $("#q").oninput = () => { semantic = null; renderList(); };
 $("#q").onkeydown = e => { if (e.key === "Enter") searchMeaning(); };
-let vseq = 0, vtimer;
-const hideSuggest = () => { $("#vsuggest").hidden = true; };
-$("#vq").oninput = () => {
-  clearTimeout(vtimer);
-  const q = $("#vq").value.trim();
-  if (q.length < 2) return hideSuggest();
-  vtimer = setTimeout(async () => {
-    const seq = ++vseq, d = await api(`/api/variables?q=${encodeURIComponent(q)}`);
-    if (seq !== vseq || $("#vq").value.trim() !== q) return;   // a newer keystroke won
-    const box = $("#vsuggest"), top = d.variables.slice(0, 8);
-    box.innerHTML = top.map(v => `<a data-open="${esc(v.folder)}"><b>${esc(v.name)}</b>${v.units ? ` <i>${esc(v.units)}</i>` : ""}
-        <span>${esc(v.standard_name || v.description || "")} · ${esc(v.dataset_title || v.folder)}</span></a>`).join("")
-      + (d.variables.length ? `<div class="more">${d.variables.length > 8 ? `${d.variables.length} matches · ` : ""}Enter for the full table</div>`
-                            : `<div class="more">No variable matches.</div>`);
-    box.querySelectorAll("[data-open]").forEach(a => a.onmousedown = ev => { ev.preventDefault(); hideSuggest(); open(a.dataset.open); });
-    box.hidden = false;
-  }, 250);
-};
-$("#vq").onblur = hideSuggest;
-$("#vq").onkeydown = async e => {
-  if (e.key === "Escape") return hideSuggest();
-  if (e.key !== "Enter" || !$("#vq").value.trim()) return;
-  clearTimeout(vtimer); vseq++; hideSuggest();
-  const q = $("#vq").value.trim();
-  const d = await api(`/api/variables?q=${encodeURIComponent(q)}`);
-  current = null; renderList();
-  $("#detail").innerHTML = `<div class="detail"><div class="top"><div><h2>Variables matching “${esc(q)}”</h2>
-    <div class="path">${d.variables.length} across published datasets · ${esc(d.engine)}</div></div></div>
-    <table class="vars"><thead><tr><th>Variable</th><th>Units</th><th>CF standard name</th><th>Description</th><th>Dataset</th></tr></thead><tbody>
-    ${d.variables.map(v => `<tr><td class="f">${esc(v.name)}</td><td>${esc(v.units || "")}</td><td>${esc(v.standard_name || "")}</td>
-      <td>${esc(v.description || "")}</td><td><a data-open="${esc(v.folder)}">${esc(v.dataset_title || v.folder)}</a></td></tr>`).join("")
-      || `<tr><td colspan="5" class="empty">No variable matches.</td></tr>`}</tbody></table></div>`;
-  document.querySelectorAll("[data-open]").forEach(a => a.onclick = () => open(a.dataset.open));
-};
+// ---------------------------------------------------------------- Find data
+let fstate = {q: "", domain: "", format: "", licence: "", queryable: false, folder: null}, fdata = null;
+const LIC = {"CC0-1.0": "CC0", "CC-BY-4.0": "CC BY 4.0", "OGL-UK-3.0": "OGL v3", "ODC-By-1.0": "ODC-By", "PDDL-1.0": "PDDL", "CC-BY-SA-4.0": "CC BY-SA 4.0"};
+const lic = l => LIC[l] || l || "licence not stated";
+
+async function loadFind() {
+  const p = new URLSearchParams();
+  for (const k of ["q", "domain", "format", "licence"]) if (fstate[k]) p.set(k, fstate[k]);
+  if (fstate.queryable) p.set("queryable", "true");
+  $("#fnote").innerHTML = fstate.q ? `<span>Searching…</span>` : "";
+  try { fdata = await api("/api/find?" + p); } catch (e) { $("#flist").innerHTML = `<div class="empty">${esc(String(e.message).slice(0, 160))}</div>`; return; }
+  renderFacets(); renderFind(); renderHome();
+}
+function renderFacets() {
+  const f = fdata.facets, sel = (k, label, items) => items.length > 1 || fstate[k] ? `<select data-facet="${k}" aria-label="${label}">
+      <option value="">${label}: any</option>${items.map(([v, n]) => `<option value="${esc(v)}" ${fstate[k] === v ? "selected" : ""}>${esc(k === "licence" ? lic(v) : v)} (${n})</option>`).join("")}</select>` : "";
+  $("#facets").innerHTML = sel("domain", "Domain", f.domain) + sel("format", "Format", f.format) + sel("licence", "Licence", f.licence)
+    + (f.queryable ? `<label><input type="checkbox" id="fqry" ${fstate.queryable ? "checked" : ""}> Queryable</label>` : "");
+  document.querySelectorAll("[data-facet]").forEach(el => el.onchange = () => { fstate[el.dataset.facet] = el.value; loadFind(); });
+  const qb = $("#fqry"); if (qb) qb.onchange = () => { fstate.queryable = qb.checked; loadFind(); };
+}
+function renderFind() {
+  const rows = fdata.results;
+  $("#fcount").textContent = rows.length;
+  $("#fnote").innerHTML = fstate.q ? `<span>By meaning and by variable · ${esc(fdata.engine || "")}</span> <a class="link" id="fclear">Clear</a>` : "";
+  const fc = $("#fclear"); if (fc) fc.onclick = () => { fstate.q = ""; $("#fq").value = ""; fqFit(); loadFind(); };
+  const card = x => `<div class="fitem${x.folder === fstate.folder ? " sel" : ""}" data-ff="${esc(x.folder)}">
+      <div class="t">${esc(x.title)}</div>
+      <div class="m">${[x.domain, x.formats.join(", "), lic(x.licence), x.tables ? `${x.rows.toLocaleString()} rows to query` : ""].filter(Boolean).map(esc).join(" · ")}</div>
+      ${x.matched ? `<div class="hit">Variable ${x.matched.map(m => esc(m.name) + (m.units ? ` (${esc(m.units)})` : "")).join(", ")}</div>` : ""}</div>`;
+  const weak = x => fstate.q && !x.matched && x.similarity < 0.35;
+  const strong = rows.filter(x => !weak(x)), rest = rows.filter(weak);
+  $("#flist").innerHTML = (strong.map(card).join("") + (rest.length ? `<div class="flist-sep">Less closely related</div>` + rest.map(card).join("") : ""))
+    || `<div class="empty">${fdata.total ? "Nothing published matches that." : "Nothing is published yet. Datasets appear here once a curator publishes them."}</div>`;
+  document.querySelectorAll("[data-ff]").forEach(el => el.onclick = () => openFind(el.dataset.ff));
+}
+// The home: the search, a few example sentences, the numbers that make the point, and the datasets as cards.
+function findIntro() {
+  $("#find-view").classList.add("ishome"); $("#fdetail").innerHTML = "";
+  if (!fdata || fstate.q) { fstate.q = ""; $("#fq").value = ""; loadFind().then(renderHome); } else renderHome();
+}
+function renderHome() {
+  if (!fdata || !$("#find-view").classList.contains("ishome")) return;
+  const rows = fdata.results, n = rows.length;
+  const asks = rows.reduce((a, x) => a + (x.rows || 0), 0), bytes = rows.reduce((a, x) => a + (x.bytes || 0), 0);
+  const lics = [...new Set(rows.map(x => x.licence).filter(Boolean))].map(lic);
+  const seen = new Set(), eg = [];
+  for (const x of rows) {   // a few words from each dataset: its keywords, or failing those the start of its title
+    const s = ((x.keywords || []).slice(0, 3).join(", ") || x.title.split(/[:(,]/)[0].split(/\s+/).slice(0, 5).join(" ")).toLowerCase();
+    if (s && !seen.has(s) && eg.length < 4) { seen.add(s); eg.push(s); } }
+  $("#heg").innerHTML = eg.map(s => `<button type="button" data-eg="${esc(s)}">${esc(s)}</button>`).join("");
+  document.querySelectorAll("[data-eg]").forEach(b => b.onclick = () => { $("#hq").value = b.dataset.eg; $("#hform").requestSubmit(); });
+  $("#hproof").innerHTML = n ? `<div><b>${n}</b><span>published dataset${n === 1 ? "" : "s"}</span></div>
+    ${asks ? `<div><b>${asks >= 1e6 ? (asks / 1e6).toFixed(1) + "M" : asks.toLocaleString()}</b><span>rows you can ask, in place</span></div>` : ""}
+    <div><b>${fmtBytes(bytes)}</b><span>of files, still where they were written</span></div>
+    ${lics.length ? `<div><b>${esc(lics.slice(0, 2).join(" · "))}</b><span>open licence${lics.length === 1 ? "" : "s"}, stated</span></div>` : ""}` : "";
+  $("#hcards").innerHTML = rows.map(x => `<div class="panel" data-ff="${esc(x.folder)}"><div class="t">${esc(x.title)}</div>
+      <div class="m">${[x.domain, x.formats.join(", "), lic(x.licence), (x.published || "").slice(0, 4)].filter(Boolean).map(esc).join(" · ")}</div>
+      <div class="askit">${x.tables ? `Ask it → ${x.rows.toLocaleString()} rows` : `${x.files} file${x.files === 1 ? "" : "s"} · ${fmtBytes(x.bytes)}`}</div></div>`).join("")
+    || `<p class="sub">Nothing is published yet. Datasets appear here once a curator publishes them.</p>`;
+  document.querySelectorAll("#hcards [data-ff]").forEach(el => el.onclick = () => openFind(el.dataset.ff));
+}
+$("#hform").onsubmit = e => { e.preventDefault(); const q = $("#hq").value.trim(); if (!q) return;
+  fstate.q = q; $("#fq").value = q; fqFit(); $("#find-view").classList.remove("ishome"); loadFind(); };
+$("#hq").onkeydown = e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); $("#hform").requestSubmit(); } };
+async function openFind(folder) {
+  fstate.folder = folder; history.replaceState(null, "", "#find/" + folder);
+  $("#find-view").classList.remove("ishome");
+  if (fdata) renderFind();
+  let r;
+  try { r = (await api(`/api/datasets/${folder}/record`)).record; } catch (e) { $("#fdetail").innerHTML = `<div class="fintro">${esc(String(e.message).slice(0, 200))}</div>`; return; }
+  if (r.status !== "published") { $("#fdetail").innerHTML = `<div class="fintro"><h2>Not published</h2><p class="sub">This dataset is still with its curators.
+    <a href="#curate/${esc(folder)}" data-curate="${esc(folder)}">Open it in Curate</a>.</p></div>`; wireCurateLinks(); return; }
+  qState = {};
+  const a = Object.fromEntries(Object.entries(r.fields).filter(([, f]) => f.status === "accepted").map(([k, f]) => [k, f.value]));
+  const title = a.title || r.name, creators = (a.creators || []).map(c => typeof c === "object" ? c.name : c);
+  const year = (a.datePublished || r.published || "").slice(0, 4), publisher = a.publisher || "FAIR demo repository on the VAST Data Platform";
+  const cite = `${creators.join(", ") || "Unknown"} (${year}). ${title}. ${typeof publisher === "object" ? publisher.name : publisher}. ${r.landing_page || r.pid}`;
+  const size = r.files.reduce((n, f) => n + f.size, 0);
+  const vars = r.variables.slice(0, 200).map(v => `<tr><td class="f">${esc(v.name)}</td><td>${esc(v.units || v.unit_inferred || "")}</td>
+      <td>${esc(v.long_name || (v.description && v.description.status === "accepted" ? v.description.value : "") || v.standard_name || "")}</td></tr>`).join("");
+  const files = r.files.map(f => `<tr><td><a href="/id/${esc(r.pid)}/files/${esc(f.name)}">${esc(f.name)}</a></td><td>${esc(f.format)}</td>
+      <td>${fmtBytes(f.size)}</td><td><code title="${esc(f.sha256)}">${esc(f.sha256.slice(0, 12))}…</code></td></tr>`).join("");
+  $("#fdetail").innerHTML = `<div class="dpage">
+    <h2>${esc(title)}</h2>
+    <div class="ids">${esc(creators.slice(0, 4).join(", "))}${creators.length > 4 ? ` and ${creators.length - 4} more` : ""}${year ? ` · ${esc(year)}` : ""} · ${esc(lic(a.license))}</div>
+    <p class="desc clampbox">${esc(a.description || "")}</p>
+    <div class="acts">
+      <button id="d-cite">Copy citation</button>
+      <a href="#d-files" id="d-dl">Download files</a>
+      <a href="/id/${esc(r.pid)}" target="_blank">Landing page</a>
+    </div>
+    ${(r.tables || []).length ? queryPanel(r) : ""}
+    <nav class="dtabs" aria-label="About this dataset">
+      <button class="on" data-dt="about">About</button>
+      <button data-dt="vars">Variables<span class="n">${r.variables.length}</span></button>
+      <button data-dt="files">Files<span class="n">${r.files.length}</span></button>
+      ${(r.tables || []).length ? `<button data-dt="code">Use it from code</button>` : ""}
+      <button data-dt="near">Similar datasets</button>
+    </nav>
+    <div class="dpane" data-dp="about"><dl class="factgrid">
+      <dt>Identifier</dt><dd><code>${esc(r.pid)}</code></dd>
+      <dt>Domain</dt><dd>${esc(a.domain || "")}</dd>
+      <dt>Keywords</dt><dd>${esc((a.keywords || []).join(", "))}</dd>
+      ${a.temporalCoverage ? `<dt>Time</dt><dd>${esc(show(a.temporalCoverage))}</dd>` : ""}
+      ${a.spatialCoverage ? `<dt>Place</dt><dd>${esc(show(a.spatialCoverage))}</dd>` : ""}
+      <dt>Files</dt><dd>${r.files.length} · ${fmtBytes(size)}</dd>
+      <dt>FAIR score</dt><dd>${r.score_after ?? "–"} of 100</dd>
+      <dt>Citation</dt><dd>${esc(cite)}</dd>
+      <dt>Metadata</dt><dd><a href="/id/${esc(r.pid)}/ro-crate-metadata.json" target="_blank">RO-Crate</a> · <a href="/id/${esc(r.pid)}/croissant.json" target="_blank">Croissant</a></dd>
+    </dl></div>
+    <div class="dpane" data-dp="vars" hidden><table class="vars"><tbody>${vars}</tbody></table></div>
+    <div class="dpane" data-dp="files" hidden><table class="vars"><tbody>${files}</tbody></table></div>
+    ${(r.tables || []).length ? `<div class="dpane" data-dp="code" hidden>${codeSnippets(r)}</div>` : ""}
+    <div class="dpane" data-dp="near" hidden><div class="near" id="d-nearlist"><span class="sub">Looking…</span></div></div>
+    <p class="sub foot">Curating this dataset? <a href="#curate/${esc(folder)}" data-curate="${esc(folder)}">Open it in Curate</a>.</p>
+  </div>`;
+  $("#d-cite").onclick = async () => { try { await navigator.clipboard.writeText(cite); $("#d-cite").textContent = "Citation copied"; }
+    catch { $("#d-cite").textContent = "Copy failed: see About"; } };
+  const showTab = name => {
+    document.querySelectorAll("#fdetail .dtabs button").forEach(b => b.classList.toggle("on", b.dataset.dt === name));
+    document.querySelectorAll("#fdetail .dpane").forEach(p => p.hidden = p.dataset.dp !== name);
+    if (name === "near") loadSimilar();
+  };
+  document.querySelectorAll("#fdetail .dtabs button").forEach(b => b.onclick = () => showTab(b.dataset.dt));
+  $("#d-dl").onclick = e => { e.preventDefault(); showTab("files"); $("#fdetail .dtabs").scrollIntoView({behavior: "smooth", block: "start"}); };
+  if ((r.tables || []).length) wireQuery(r);
+  const dd = $("#fdetail .desc"); if (dd) dd.onclick = () => dd.classList.toggle("clampbox");
+  wireCurateLinks();
+  let nearDone = false;
+  const loadSimilar = async () => {
+    if (nearDone) return; nearDone = true;
+    try {
+      const d = await api(`/api/similar/${folder}`);
+      $("#d-nearlist").innerHTML = (d.same_files.map(x => `<div><a data-ff2="${esc(x.folder)}">${esc(x.title)}</a> <span class="sub">· the same files</span></div>`).join("")
+        + d.similar.map(x => `<div><a data-ff2="${esc(x.folder)}">${esc(x.title)}</a> <span class="sub">· ${esc(x.domain || x.formats.join(", "))}</span></div>`).join(""))
+        || `<span class="sub">Nothing published is closely similar yet (searched with ${esc(d.engine)}).</span>`;
+      document.querySelectorAll("[data-ff2]").forEach(el => el.onclick = () => openFind(el.dataset.ff2));
+    } catch (err) { $("#d-nearlist").innerHTML = `<span class="sub">${esc(String(err.message).slice(0, 120))}</span>`; }
+  };
+}
+function codeSnippets(r) {
+  const t = r.tables[0], cols = t.columns.filter(c => c.source).slice(0, 3).map(c => c.name);
+  const num = t.columns.find(c => c.source && c.min != null && typeof c.min === "number");
+  const where = num ? `${num.name}>=${num.min}` : "";
+  const http = `${location.origin}/id/${r.pid}/tables/${t.table}?columns=${cols.join(",")}${where ? "&where=" + encodeURIComponent(where) : ""}&limit=100&format=csv`;
+  const py = `import vastdb
+from ibis import _
+
+session = vastdb.connect(endpoint="http://<your VAST S3 endpoint>",
+                         access="<access key>", secret="<secret key>")
+with session.transaction() as tx:
+    table = tx.bucket("fair-db").schema("data").table("${t.table}")
+    rows = table.select(columns=${JSON.stringify(cols)}${num ? `,\n                        predicate=_["${num.name}"] >= ${num.min}` : ""}).read_all()
+print(rows.to_pandas().head())`;
+  const sql = `SELECT ${cols.map(c => `"${c}"`).join(", ")}
+FROM vast."${t.location.split("/").slice(0, 2).join("/")}".${t.table}${num ? `\nWHERE "${num.name}" >= ${num.min}` : ""}
+LIMIT 100`;
+  return `<div class="codehead">Python <span class="sub">the VAST DB SDK, from a notebook or a job on the cluster's network</span></div><pre class="code">${esc(py)}</pre>
+    <div class="codehead">HTTP <span class="sub">from anything; CSV, JSON or Parquet</span></div><pre class="code">curl '${esc(http)}'</pre>
+    <div class="codehead">SQL <span class="sub">for Trino run by VAST on the CNodes; not set up in this demo</span></div><pre class="code">${esc(sql)}</pre>
+    ${r.tables.length > 1 ? `<p class="sub" style="margin:0 14px 12px">The other tables: ${r.tables.slice(1).map(x => `<code>${esc(x.table)}</code>`).join(", ")}.</p>` : ""}`;
+}
+$("#fform").onsubmit = e => { e.preventDefault(); fstate.q = $("#fq").value.trim(); $("#find-view").classList.remove("ishome"); loadFind(); };
+// Grows with what's typed; Enter searches, Shift+Enter starts a new line.
+const fqFit = () => { const t = $("#fq"); t.style.height = "auto"; t.style.height = Math.min(160, Math.max(46, t.scrollHeight + 2)) + "px"; };
+$("#fq").oninput = () => { fqFit(); if (!$("#fq").value.trim() && fstate.q) { fstate.q = ""; loadFind(); } };
+$("#fq").onkeydown = e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); $("#fform").requestSubmit(); } };
+
+// ---------------------------------------------------------------- views: Find data, Curate
+function wireCurateLinks() {
+  document.querySelectorAll("[data-curate]").forEach(a => a.onclick = e => { e.preventDefault(); showView("curate", a.dataset.curate); });
+  document.querySelectorAll("[data-find]").forEach(a => a.onclick = e => { e.preventDefault(); showView("find", a.dataset.find); });
+}
+function showView(v, folder) {
+  document.body.classList.toggle("view-find", v === "find");
+  $("#find-view").hidden = v !== "find"; $("#curate-view").hidden = v !== "curate";
+  document.querySelectorAll("[data-view]").forEach(b => { if (b.dataset.view === v) b.setAttribute("aria-current", "page"); else b.removeAttribute("aria-current"); });
+  if (v === "find") {   // one query panel on the page at a time: they share element ids
+    $("#detail").innerHTML = `<div class="empty">Select a dataset to review it.</div>`; current = null; renderList();
+    if (!fdata) loadFind();
+    if (folder) openFind(folder); else { fstate.folder = null; findIntro(); history.replaceState(null, "", "#find"); if (fdata) renderFind(); }
+  } else {
+    $("#fdetail").innerHTML = ""; fstate.folder = null;
+    history.replaceState(null, "", "#curate" + (folder ? "/" + folder : ""));
+    if (folder) open(folder);
+  }
+}
+document.querySelectorAll("[data-view]").forEach(b => b.onclick = () => showView(b.dataset.view));
+document.addEventListener("click", e => { const a = e.target.closest("[data-find]"); if (a && !a.onclick) { e.preventDefault(); showView("find", a.dataset.find); } });
+{
+  const m = location.hash.match(/^#(find|curate)(?:\/(.+))?$/);
+  showView(m ? m[1] : "find", m && m[2] ? decodeURIComponent(m[2]) : null);
+}
 api("/api/info").then(i => {
-  $("#mode").textContent = i.mode === "local" ? "local pipeline · " + i.model : "VAST cluster · " + i.model;
+  runningOn = i.mode === "local" ? "this machine (local mode)" : "the VAST cluster";
+  $("#log-mode").textContent = i.mode === "local" ? "local pipeline · " + i.model : "VAST cluster · " + i.model;
+  $("#pipe-line").textContent = $("#pipe-line").textContent.replace(/^Pipeline/, `Pipeline on ${runningOn}`);
   $("#arch-mode").innerHTML = i.mode === "local"
     ? `<b>Running now: local mode.</b> The same function code runs inside this portal over a folder on disk, standing in for the buckets. Model: ${esc(i.model)}.`
     : `<b>Running now: on the VAST cluster.</b> The function runs on DataEngine; this portal only reads records and writes reviews over S3. Model: ${esc(i.model)}.`;

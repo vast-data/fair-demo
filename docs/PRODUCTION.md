@@ -17,9 +17,9 @@ demo does today and what to add, roughly in priority order. The portal's Help, u
 | Identifiers | Test ARKs (ark:/99999/fk4…) resolved by the portal. | DataCite DOIs (or the institution's PID service), with landing pages on a stable public host. |
 | Access | Open datasets; files served from S3 through the portal. | Restricted data: access conditions in the record, authorisation at download, and metadata-only publication where needed. |
 | Preservation | A VAST snapshot per publication, not locked. | Locked (indestructible) snapshots or replication, with a retention policy. |
-| Scale | The function downloads whole files; search uses VAST DB's vector index. | Header-only or ranged reads for large files. |
+| Scale | The function downloads whole files; search uses VAST Vector Search in VAST DataBase. | Header-only or ranged reads for large files. |
 | Operations | One portal replica; a personal model key. | A service-account key, more than one replica, monitoring of the pipeline, dead-letter topic and Catalog runs, and backups of fair-db. |
-| Catalogue of catalogues | One site's catalog, searchable in its own portal. | Each site publishes a DCAT-AP feed of its published records; a central service harvests the feeds into the same tables with a site column, re-embeds them with one model so search ranks across sites, and links back to each site for access. |
+| Catalog of catalogs | One site's catalog, searchable in its own portal. | One option, while the requirement is still being defined: each site publishes its catalog changes (a dataset published, updated or withdrawn, with its record) as events on a topic on its own VAST Event Broker, which speaks the Kafka protocol. A central catalog, or any partner site, subscribes and keeps the same tables with a site column, re-embedding with one model so search ranks across sites, and links back to each site for access. The broker keeps an ordered, replayable history, so a new subscriber catches up from the start; a DCAT-AP feed can be generated from the same events for harvesters that pull. |
 
 ## Notes
 
@@ -32,5 +32,7 @@ demo does today and what to add, roughly in priority order. The portal's Help, u
   `data/ground_truth.json` and `scripts/scorecard.py`, and grow the set per domain.
 - **Known issues** are in `docs/known-issues.md`. One matters for anyone scripting VMS: identity policies
   are attached per tenant (`users/<id>/tenant_data/`), or the Query Engine refuses every query.
-- **A catalogue of catalogues** needs no change to curation: the feed is generated from `fair.records`
-  (published rows only), and the central service runs the same search code over the harvested rows.
+- **A catalog of catalogs** needs no change to curation: the events would come from the publish step
+  (`fair.records` already holds every version, with who made it), and the central catalog runs the same
+  search code over the rows it receives. The demo already runs the Event Broker, for its triggers; it does
+  not publish catalog events yet.

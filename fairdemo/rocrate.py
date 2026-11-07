@@ -166,6 +166,17 @@ def build(record: dict, base_url: str, s3_prefix: str) -> dict:
                       "encodingFormat": f["media_type"], "sha256": f["sha256"],
                       "contentUrl": "%s/files/%s" % (landing, f["name"]),
                       "sameAs": "%s/%s" % (s3_prefix.rstrip("/"), f["name"])})
+    for t in record.get("tables") or []:
+        # The data itself, queryable in place: a VAST DataBase table per tabular part, read over HTTP with
+        # column selection and filters pushed down to VAST (and from SQL engines through VAST's connectors).
+        tid = "#table-%s" % t["table"]
+        root["distribution"].append({"@id": tid})
+        graph.append({"@id": tid, "@type": "DataDownload", "name": "Table %s" % t["location"],
+                      "contentUrl": "%s/tables/%s?format=csv" % (landing, t["table"]), "encodingFormat": "text/csv",
+                      "contentSize": "%d rows" % t["rows"], "isBasedOn": {"@id": t["source"]},
+                      "description": "%s as a VAST DataBase table (%d rows, %d columns). Query it in place: "
+                                     "?columns=a,b&where=a>=1&limit=100&format=csv|json|parquet"
+                                     % (t["source"], t["rows"], len(t["columns"]))})
     snap = record.get("snapshot")
     if snap:
         # The published bytes, preserved: a VAST snapshot of the folder taken at publication.
@@ -252,7 +263,7 @@ def _preview(root, people, record, crate) -> str:
         jsonld["creator"] = [{"@type": p["@type"], "name": p["name"], **({"sameAs": p["@id"]} if p["@id"].startswith("http") else {})}
                              for p in people]
     jsonld["distribution"] = [{"@type": "DataDownload", "contentUrl": g["contentUrl"], "encodingFormat": g["encodingFormat"]}
-                              for g in crate["@graph"] if g.get("@type") == "File"]
+                              for g in crate["@graph"] if g.get("@type") == "File" or str(g["@id"]).startswith("#table-")]
     rows = "".join('<tr><td><a href="%s/files/%s">%s</a></td><td>%s</td><td>%s</td><td><code>%s…</code></td></tr>'
                    % (e(root["url"]), e(f["name"]), e(f["name"]), e(f["format"]), f"{f['size']:,}", f["sha256"][:16])
                    for f in record["files"])
@@ -260,6 +271,11 @@ def _preview(root, people, record, crate) -> str:
     preserved = ("<p><b>Preserved:</b> VAST snapshot <code>%s</code>, taken %s at publication. The files above are "
                  "served from the live folder only while they match it.</p>" % (e(snap["name"]), e(str(snap.get("created"))[:19])))\
         if snap else ""
+    tables = "".join(_table_html(root["url"], t) for t in record.get("tables") or [])
+    if tables:
+        tables = ("<h2>Query it in place</h2><p>The data is also in VAST DataBase, one table per part, so it can be "
+                  "read without downloading the files: choose columns, filter rows, and get CSV, JSON or Parquet. "
+                  "Units and meanings are the reviewed ones.</p>" + tables)
     lic = root.get("license", {}).get("@id", "")
     return f"""<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
@@ -276,5 +292,19 @@ td,th{{text-align:left;padding:.25rem .75rem .25rem 0}}code{{background:#f2f2f2;
 <b>Keywords:</b> {e(', '.join(root.get('keywords') or []))}</p>
 <table><tr><th>File</th><th>Format</th><th>Bytes</th><th>SHA-256</th></tr>{rows}</table>
 {preserved}
+{tables}
 <p>Machine-readable: <a href="{e(root['url'])}/ro-crate-metadata.json">RO-Crate</a> · <a href="{e(root['url'])}/croissant.json">Croissant</a></p>
 </body></html>"""
+
+
+def _table_html(base: str, t: dict) -> str:
+    e = html.escape
+    url = "%s/tables/%s" % (base, t["table"])
+    cols = "".join("<tr><td><code>%s</code></td><td>%s</td><td>%s</td><td>%s</td></tr>" % (
+        e(c["name"]), e(c.get("units") or ""), e(c.get("description") or c.get("standard_name") or ""),
+        e("%s to %s" % (c["min"], c["max"]) if c.get("min") is not None else c["type"])) for c in t["columns"][:40])
+    more = "<p>… and %d more columns.</p>" % (len(t["columns"]) - 40) if len(t["columns"]) > 40 else ""
+    return (f"<h3><code>{e(t['location'])}</code></h3><p>{t['rows']:,} rows from {e(t['source'])} · "
+            f"<a href=\"{e(url)}?limit=100&format=csv\">first 100 rows (CSV)</a> · "
+            f"<a href=\"{e(url)}?limit=100\">JSON</a></p>"
+            f"<table><tr><th>Column</th><th>Units</th><th>Meaning</th><th>Range</th></tr>{cols}</table>{more}")

@@ -6,9 +6,11 @@ the function does depends on the object that arrived:
   any data file           profile it (format, header, checksum) -> row in fair.files
   <folder>/_READY         the folder is complete: curate it from the stored profiles and the folder's
                           companion documents -> record version (status "proposed") in fair.records
-  <folder>/_fair/review.json   a person's review decisions: apply them, publish ro-crate-metadata.json,
-                          croissant.json and ro-crate-preview.html into the folder, a catalog row
-                          (status "published"), and the landing text into the InsightEngine docs bucket
+  <folder>/_fair/review.json   a person's review decisions: apply them, load the data into VAST DataBase
+                          tables (fair-db/data, one per tabular part: fairdemo/tables.py), publish
+                          ro-crate-metadata.json, croissant.json and ro-crate-preview.html into the folder,
+                          a catalog row (status "published"), and the landing text into the InsightEngine
+                          docs bucket
 
 Its own outputs land in the same bucket and come back as events; they are skipped. Every table is
 append-only, so fair.records is also the audit trail of who changed what.
@@ -33,11 +35,15 @@ import pyarrow as pa
 import vastdb
 from ibis import _
 
-from fairdemo import catalog, companions, curate, extract, fairscore, rocrate
+from fairdemo import catalog, companions, curate, extract, fairscore, nlquery, rocrate
+from fairdemo import tables as datatables
 from vast.dataengine.sdk import Context, VastEvent
 
 DB_BUCKET = os.getenv("DB_BUCKET", "fair-db")
 DB_SCHEMA = os.getenv("DB_SCHEMA", "fair")
+DATA_SCHEMA = os.getenv("DATA_SCHEMA", "data")   # the published data itself, as tables
+table_sink = None   # set in local mode and tests (datatables.LocalTables); otherwise VAST DataBase
+TABLE_ATTEMPTS = 2  # loads that stop the function before it gives up on a dataset's tables
 DOCS_BUCKET = os.getenv("DOCS_BUCKET", "fair-docs")
 LANDING_BASE_URL = os.getenv("LANDING_BASE_URL", "http://fair.localhost/id")
 VMS_URL, VMS_TENANT = os.getenv("VMS_URL", ""), os.getenv("VMS_TENANT", "fair")
@@ -59,6 +65,10 @@ TABLES = {
                           ("title", pa.string()), ("domain", pa.string()), ("pid", pa.string()),
                           ("score_before", pa.int64()), ("score_after", pa.int64()),
                           ("record", pa.string()), ("actor", pa.string()), ("updated_at", pa.string())]),
+    # One row per table loaded at publication (append-only, like records): where the data can be queried.
+    "tables": pa.schema([("folder", pa.string()), ("pid", pa.string()), ("table", pa.string()),
+                         ("location", pa.string()), ("source", pa.string()), ("source_sha256", pa.string()),
+                         ("rows", pa.int64()), ("columns", pa.string()), ("loaded_at", pa.string())]),
 }
 
 _clients = {}
@@ -220,6 +230,11 @@ def on_review(ctx, bucket, folder, key):
     review_id = hashlib.sha256(raw).hexdigest()[:16]
     record = json.loads(prev["record"])
     if record.get("review_id") == review_id:
+        # Already published from this review. If its tables never finished (the function was stopped
+        # part-way), this redelivery, or the portal's "try again", loads them; nothing else is redone.
+        if prev["status"] == "published" and record.get("tables_status") == "loading":
+            record["status"] = "published"
+            return {"tables_retried": folder, "tables": publish_tables(ctx, bucket, folder, did, record)}
         ctx.logger.info(f"{folder}: review {review_id} already applied (redelivered event)")
         return {"skipped": f"{key}: already applied"}
     record = curate.apply_review(record, review.get("decisions", {}))
@@ -243,6 +258,17 @@ def on_review(ctx, bucket, folder, key):
         except Exception as e:  # noqa: BLE001 - publish without it, and say so
             record["snapshot"] = None
             ctx.logger.info(f"{did}: no snapshot taken: {e}")
+        # Tables from an earlier publication stay listed only while their source bytes are unchanged;
+        # this publication's tables are loaded once the dataset is published (publish_tables, below).
+        shas = {f["name"]: f["sha256"] for f in record["files"]}
+        record["tables"] = [t for t in record.get("tables") or [] if shas.get(t["source"]) == t["source_sha256"]]
+        # The curator chooses at publish whether the data is also loaded as tables ("tables" in the review,
+        # default yes). The files stay where they are either way.
+        record["tables_wanted"] = review.get("tables", True) is not False
+        record["tables_status"] = "loading" if record["tables_wanted"] and tables_here() is not None and \
+            any(f.get("format") in datatables.TABULAR for f in record["files"]) else "none"
+        if not record["tables_wanted"]:
+            record["tables"] = []
     try:
         docs = rocrate.build(record, LANDING_BASE_URL, f"s3://{bucket}/{folder}")
     except rocrate.NotReady as e:
@@ -253,10 +279,7 @@ def on_review(ctx, bucket, folder, key):
                                   Body=json.dumps(record, indent=2, default=str).encode())
         ctx.logger.info(f"{folder}: reviewed by {actor} but not publishable yet: {e}")
         return {"needs_review": folder, "missing": e.missing}
-    for name in curate.OUTPUTS:
-        body = docs[name] if name.endswith(".html") else json.dumps(docs[name], indent=2, default=str)
-        _clients["s3"].put_object(Bucket=bucket, Key=f"{folder}/{name}", Body=body.encode(),
-                                  ContentType="text/html" if name.endswith(".html") else "application/ld+json")
+    write_outputs(bucket, folder, docs)
     record.update(pid=docs["pid"], landing_page=docs["landing_page"], access_url=docs["landing_page"] + "/files/",
                   s3_url=f"s3://{bucket}/{folder}/", published=now())
     # The landing text goes to the InsightEngine bucket, whose own trigger chunks and embeds it for RAG.
@@ -277,7 +300,88 @@ def on_review(ctx, bucket, folder, key):
     except Exception as e:  # noqa: BLE001
         ctx.logger.info(f"{folder}: published, not indexed for search: {e}")
     ctx.logger.info(f"published {folder} as {docs['pid']}: FAIR {record.get('score_before')} -> {score['total']}")
-    return {"published": folder, "pid": docs["pid"], "score": score["total"]}
+    # Only now, with the dataset published, load its data as tables: however long that takes, or however
+    # it fails (a huge or unreadable file, a type the server refuses, the function's time running out),
+    # the dataset is already published as files.
+    got = publish_tables(ctx, bucket, folder, did, record)
+    return {"published": folder, "pid": docs["pid"], "score": score["total"], "tables": got}
+
+
+def write_outputs(bucket, folder, docs):
+    for name in curate.OUTPUTS:
+        body = docs[name] if name.endswith(".html") else json.dumps(docs[name], indent=2, default=str)
+        _clients["s3"].put_object(Bucket=bucket, Key=f"{folder}/{name}", Body=body.encode(),
+                                  ContentType="text/html" if name.endswith(".html") else "application/ld+json")
+
+
+def publish_tables(ctx, bucket, folder, did, record) -> int:
+    """Load a published dataset's data as tables, then list them in its crate, landing page and record
+    (a new fair.records version by fair-curate/tables). Returns how many tables it has."""
+    if record.get("tables_status") == "none":
+        return 0
+    # Count attempts in record.json, written before each one: if loading ever stops the function itself
+    # (its time limit, or the pod replaced), the redelivered event retries, but only so often.
+    try:
+        cur = json.loads(_clients["s3"].get_object(Bucket=bucket, Key=f"{folder}/_fair/record.json")["Body"].read())
+        attempts = int(cur.get("tables_attempts") or 0) if cur.get("tables_status") == "loading" else 0
+    except Exception:  # noqa: BLE001
+        attempts = 0
+    if attempts >= TABLE_ATTEMPTS:
+        tabs, notes = [], [f"loading as tables stopped the function {attempts} times, so the data stays as files"]
+    else:
+        record.update(tables_status="loading", tables_started=now(), tables_attempts=attempts + 1)
+        _clients["s3"].put_object(Bucket=bucket, Key=f"{folder}/_fair/record.json",
+                                  Body=json.dumps(record, indent=2, default=str).encode())
+        try:
+            tabs, notes = load_tables(bucket, folder, record, previous=record.get("tables"))
+        except Exception as e:  # noqa: BLE001
+            tabs, notes = [], [f"no tables loaded: {e}"]
+    for n in notes:
+        ctx.logger.info(f"{did}: {n}")
+    record.update(tables=tabs, table_notes=notes, tables_status="loaded" if tabs else "none")
+    # Example questions for the Ask box, made once here with the tables' reviewed metadata and kept in the
+    # record, so the portal shows them at once. Each comes with a query already checked against the tables.
+    record["questions"] = []
+    if tabs:
+        try:
+            title = curate.accepted(record).get("title") or record["name"]
+            record["questions"] = nlquery.suggest(record, title)
+            ctx.logger.info(f"{did}: {len(record['questions'])} example question(s)")
+        except Exception as e:  # noqa: BLE001 - the portal can make them on request instead
+            ctx.logger.info(f"{did}: no example questions: {e}")
+    try:
+        docs = rocrate.build(record, LANDING_BASE_URL, f"s3://{bucket}/{folder}")
+        write_outputs(bucket, folder, docs)
+        _clients["s3"].put_object(Bucket=DOCS_BUCKET, Key=re.sub(r"[^A-Za-z0-9._-]+", "-", docs["pid"]) + ".md",
+                                  Body=landing_markdown(record, docs).encode(), ContentType="text/markdown")
+    except Exception as e:  # noqa: BLE001 - the published crate (without tables) stays as it was
+        ctx.logger.info(f"{did}: tables loaded, crate not updated: {e}")
+    put_record(did, record, "published", "fair-curate/tables", score_after=record.get("score_after"))
+    _clients["s3"].put_object(Bucket=bucket, Key=f"{folder}/_fair/record.json",
+                              Body=json.dumps(record, indent=2, default=str).encode())
+    ctx.logger.info(f"{did}: {len(tabs)} table(s) loaded" + (f": {', '.join(t['table'] for t in tabs)}" if tabs else ""))
+    return len(tabs)
+
+
+def tables_here():
+    """Where published data is loaded as tables: VAST DataBase, or the override local mode and tests set."""
+    if table_sink is not None:
+        return table_sink
+    return datatables.VastTables(_clients["db"], DB_BUCKET, DATA_SCHEMA) if _clients.get("db") else None
+
+
+def load_tables(bucket, folder, record, previous=None) -> tuple[list[dict], list[str]]:
+    sink = tables_here()
+    if sink is None:
+        return [], ["tables are not configured here"]
+    with tempfile.TemporaryDirectory() as tmp:
+        got, notes = datatables.load(sink, record, lambda name: download(bucket, f"{folder}/{name}", Path(tmp) / name),
+                                     previous=previous)
+    for t in got:
+        insert("tables", {"folder": record["key_prefix"], "pid": record.get("pid") or rocrate.mint_pid(record), "table": t["table"],
+                          "location": t["location"], "source": t["source"], "source_sha256": t["source_sha256"],
+                          "rows": t["rows"], "columns": json.dumps(t["columns"], default=str), "loaded_at": now()})
+    return got, notes
 
 
 def snapshot_folder(ctx, bucket, folder, name) -> dict | None:
@@ -311,6 +415,11 @@ def landing_markdown(record, docs) -> str:
         desc = v.get("long_name") or (v.get("description") or {}).get("value") or ""
         lines.append(f"- {v['name']}" + (f" ({v['units']})" if v.get("units") else "") + (f": {desc}" if desc else ""))
     lines += ["", "## Files"] + [f"- {f['name']} ({f['format']}, {f['size']} bytes)" for f in record["files"]]
+    if record.get("tables"):
+        lines += ["", "## Tables (query in place)"] + [
+            f"- {t['location']}: {t['rows']:,} rows from {t['source']}; columns "
+            + ", ".join(c["name"] + (f" ({c['units']})" if c.get("units") else "") for c in t["columns"][:40])
+            for t in record["tables"]]
     return "\n".join(lines) + "\n"
 
 

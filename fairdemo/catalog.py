@@ -1,6 +1,6 @@
 """The search index for published datasets, in VAST DB.
 
-  fair.search     one row per published dataset: its text and an embedding in a vector-indexed column,
+  fair.search     one row per published dataset: its text and an embedding in a vector-indexed column (VAST Vector Search),
                   for searching by meaning ("satellite ocean temperature")
   fair.variables  one row per variable: name, units, CF standard name, description, for exact questions
                   ("every dataset with sea_surface_temperature")
@@ -151,7 +151,7 @@ COLUMNS = ["folder", "pid", "title", "domain", "keywords", "description"]
 
 def search(session, bucket: str, schema_name: str, query: str, limit: int = 10) -> tuple[list[dict], str]:
     """Datasets closest in meaning to the query, nearest first, with a 0-1 cosine similarity, and which
-    engine answered: VAST DB's vector index, or (if the query engine refuses) the same stored vectors
+    engine answered: VAST Vector Search (in VAST DataBase), or (if the query engine refuses) the same stored vectors
     read with a plain select and ranked here."""
     vec = embed_query(query)
     with session.transaction() as tx:
@@ -159,7 +159,7 @@ def search(session, bucket: str, schema_name: str, query: str, limit: int = 10) 
         try:
             # A few more than asked for, so the word boost can reorder near neighbours.
             got = table.vector_search(vec=vec, columns=COLUMNS, limit=limit * 3).read_all().to_pylist()
-            engine = "VAST DB vector index"
+            engine = "VAST Vector Search"
             for r in got:
                 # unit vectors: squared L2 distance d = 2 - 2·cos, so cos = 1 - d/2
                 r["similarity"] = round(max(0.0, 1 - r.pop("vast_pysdk_vector_dist") / 2), 3)
@@ -191,3 +191,27 @@ def match_variables(rows: list[dict], text: str) -> list[dict]:
     # exact standard-name matches first: they are the controlled-vocabulary answer
     hits.sort(key=lambda r: (_norm(r.get("standard_name")) != t, r.get("dataset_title") or "", r["name"]))
     return hits
+
+
+def similar(session, bucket: str, schema_name: str, folder: str, limit: int = 5) -> tuple[list[dict], str]:
+    """Published datasets nearest in meaning to this one: its own stored embedding, searched with VAST DB's
+    VAST Vector Search (or, if the query engine refuses, the stored vectors ranked here)."""
+    from ibis import _
+    with session.transaction() as tx:
+        table = tx.bucket(bucket).schema(schema_name).table("search")
+        own = table.select(columns=["embedding"], predicate=(_["folder"] == folder)).read_all().to_pylist()
+        if not own:
+            return [], "not indexed yet"
+        vec = own[0]["embedding"]
+        try:
+            got = table.vector_search(vec=vec, columns=COLUMNS, limit=limit + 1).read_all().to_pylist()
+            for r in got:
+                r["similarity"] = round(max(0.0, 1 - r.pop("vast_pysdk_vector_dist") / 2), 3)
+            engine = "VAST Vector Search"
+        except Exception:  # noqa: BLE001
+            got = table.select(columns=COLUMNS + ["embedding"]).read_all().to_pylist()
+            for r in got:
+                r["similarity"] = round(sum(a * b for a, b in zip(vec, r.pop("embedding"))), 3)
+            got.sort(key=lambda r: -r["similarity"])
+            engine = "VAST DB vectors, ranked in the portal"
+    return [r for r in got if r["folder"] != folder][:limit], engine

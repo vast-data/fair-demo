@@ -15,14 +15,15 @@ from pathlib import Path
 from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import HTMLResponse, Response
 
-from fairdemo import catalog, curate, fairscore, llm, rocrate, sweep
-from portal import store as stores
-
 ROOT = Path(__file__).resolve().parents[1]
+# .env before the fairdemo imports: fairdemo.llm reads its model settings when it is imported.
 for line in (ROOT / ".env").read_text().splitlines() if (ROOT / ".env").exists() else []:
     k, sep, v = line.partition("=")
     if sep and not k.startswith("#"):
-        os.environ.setdefault(k.strip(), v.strip())
+        os.environ.setdefault(k.strip(), v.split(" #", 1)[0].strip())
+
+from fairdemo import catalog, curate, fairscore, llm, nlquery, rocrate, sweep, tables  # noqa: E402
+from portal import store as stores  # noqa: E402
 
 app = FastAPI(title="FAIR portal")
 store = stores.from_env()
@@ -84,8 +85,38 @@ def datasets():
 @app.get("/api/datasets/{folder:path}/record")
 def dataset(folder: str):
     r = record_for(folder)
+    stalled_tables(r)
     published = r.get("status") == "published"
     return {"record": r, "score": fairscore.score(r, published=published)}
+
+
+def stalled_tables(r: dict) -> None:
+    """Tables load after publication. If the function stopped part-way (its time ran out, its pod was
+    replaced), the record still says "loading": past the loading budget, say what happened instead."""
+    import datetime as dt
+    if r.get("tables_status") != "loading" or not r.get("published"):
+        return
+    started = r.get("tables_started") or r["published"]
+    age = (dt.datetime.now(dt.timezone.utc) - dt.datetime.fromisoformat(started)).total_seconds()
+    if age > tables.LOAD_SECONDS + 300:
+        r["tables_status"] = "stalled"
+        r["table_notes"] = (r.get("table_notes") or []) + [
+            "Loading the data as tables didn't finish (the function may have run out of time). The dataset is "
+            "published as files."]
+
+
+@app.post("/api/datasets/{folder:path}/tables/retry")
+def retry_tables(folder: str):
+    """Load a published dataset's tables again, after a load that didn't finish: the same review file is
+    written again, and the function, seeing a review it has already applied, redoes only the tables."""
+    r = record_for(folder)
+    if r.get("status") != "published" or r.get("tables_status") != "loading":
+        raise HTTPException(409, "only a published dataset whose tables didn't finish loading can be retried")
+    body = store.get_bytes(f"{folder}/_fair/review.json")
+    if body is None:
+        raise HTTPException(404, "no review to replay")
+    store.put(f"{folder}/_fair/review.json", body)
+    return {"ok": True}
 
 
 @app.post("/api/datasets/{folder:path}/preview")
@@ -107,9 +138,11 @@ async def preview(folder: str, request: Request):
 async def review(folder: str, request: Request):
     body = await request.json()
     record_for(folder)
+    # "tables": whether to also load the tabular files into VAST DataBase (the files stay where they are
+    # either way). Default yes; a curator can publish as files only.
     store.put(f"{folder}/_fair/review.json", json.dumps({
         "reviewer": body.get("reviewer") or "reviewer", "decisions": body.get("decisions", {}),
-        "variables": body.get("variables", {})}, indent=2).encode())
+        "variables": body.get("variables", {}), "tables": body.get("tables", True) is not False}, indent=2).encode())
     return {"ok": True}
 
 
@@ -169,6 +202,7 @@ async def upload(folder: str = Form(...), files: list[UploadFile] = File(...)):
 
 
 DB_BUCKET, DB_SCHEMA = os.environ.get("DB_BUCKET", "fair-db"), os.environ.get("DB_SCHEMA", "fair")
+DATA_SCHEMA = os.environ.get("DATA_SCHEMA", "data")
 _local_vectors: dict[str, tuple[str, list[float]]] = {}  # local mode: folder -> (record version, unit vector)
 
 
@@ -178,7 +212,7 @@ def _published() -> list[dict]:
 
 @app.get("/api/search")
 def search(q: str, limit: int = 10):
-    """Published datasets ranked by meaning. Cluster: VAST DB vector index. Local: the same embeddings,
+    """Published datasets ranked by meaning. Cluster: VAST Vector Search in VAST DataBase. Local: the same embeddings,
     ranked in memory. If the embedding model can't be reached, falls back to matching the words."""
     q = q.strip()
     if not q:
@@ -232,6 +266,104 @@ def _search_by_meaning(q: str, limit: int) -> dict:
         out.append({k: s[k] for k in ("folder", "pid", "title", "domain", "description")} |
                    {"keywords": ", ".join(s["keywords"]), "similarity": round(sim, 3)})
     return {"results": catalog.rank(q, out)[:limit], "engine": "in-memory (local mode)"}
+
+
+# ---------------------------------------------------------------- Find data: published datasets, for the people who use them
+
+def facts(r: dict) -> dict:
+    """What someone choosing a dataset needs to see, from its published record."""
+    a = curate.accepted(r)
+    tabs = r.get("tables") or []
+    return {"folder": r.get("key_prefix") or r["name"], "pid": r.get("pid"), "title": a.get("title") or r["name"],
+            "description": (a.get("description") or "")[:600], "domain": a.get("domain"),
+            "keywords": a.get("keywords") or [], "licence": a.get("license"),
+            "creators": [c.get("name", "") if isinstance(c, dict) else str(c) for c in a.get("creators") or []],
+            "formats": sorted({f["format"] for f in r["files"]}), "files": len(r["files"]),
+            "bytes": sum(f["size"] for f in r["files"]), "tables": len(tabs), "rows": sum(t["rows"] for t in tabs),
+            "score": r.get("score_after"), "published": r.get("published"), "landing_page": r.get("landing_page"),
+            "temporal": a.get("temporalCoverage"), "spatial": a.get("spatialCoverage")}
+
+
+def _facets(rows: list[dict]) -> dict:
+    from collections import Counter
+    return {"domain": Counter(x["domain"] for x in rows if x["domain"]).most_common(),
+            "format": Counter(f for x in rows for f in x["formats"]).most_common(),
+            "licence": Counter(x["licence"] for x in rows if x["licence"]).most_common(),
+            "queryable": sum(1 for x in rows if x["tables"])}
+
+
+@app.get("/api/find")
+def find(q: str = "", domain: str = "", format: str = "", licence: str = "", queryable: bool = False):
+    """Published datasets for people looking for data: by meaning (the stored embeddings) and by variable
+    (names, CF standard names, units, descriptions), narrowed by domain, format, licence and whether the
+    data can be queried in place. Without a query, all of them, by title."""
+    rows = {x["folder"]: x for x in (facts(r) for r in _published())}
+    facets = _facets(list(rows.values()))
+    engine, q = None, q.strip()
+    if q:
+        try:
+            found = _search_by_meaning(q, 50)
+        except (llm.LLMError, HTTPException) as e:
+            found = {"results": _keyword_search(q, 50),
+                     "engine": "word match: the embedding model is unavailable (%s)" % (_model_reason(e) if isinstance(e, llm.LLMError) else e.detail)}
+        engine = found["engine"]
+        for hit in found["results"]:
+            if hit["folder"] in rows:
+                rows[hit["folder"]]["similarity"] = hit["similarity"]
+        for v in variables(q)["variables"]:
+            if v["folder"] in rows:
+                rows[v["folder"]].setdefault("matched", []).append(
+                    {k: v.get(k) for k in ("name", "units", "standard_name", "description")})
+        for x in rows.values():
+            if x.get("matched"):   # a variable that matches is strong evidence: rank it up
+                x["similarity"] = round(max(x.get("similarity") or 0, 0.5) + 0.1, 3)
+                x["matched"] = x["matched"][:5]
+        hits = [x for x in rows.values() if x.get("similarity") is not None]
+        hits.sort(key=lambda x: -x["similarity"])
+    else:
+        hits = sorted(rows.values(), key=lambda x: x["title"].lower())
+    hits = [x for x in hits if (not domain or x["domain"] == domain) and (not format or format in x["formats"])
+            and (not licence or x["licence"] == licence) and (not queryable or x["tables"])]
+    return {"results": hits, "facets": facets, "engine": engine, "total": len(rows)}
+
+
+SIMILAR_MIN = float(os.environ.get("FAIR_SIMILAR_MIN", "0.45"))
+
+
+@app.get("/api/similar/{folder:path}")
+def similar(folder: str, limit: int = 5):
+    """Published datasets close in meaning to this one, and any that hold the very same files (by checksum)."""
+    pubs = {r["key_prefix"]: r for r in _published()}
+    me = pubs.get(folder)
+    if not me:
+        raise HTTPException(404, f"{folder} is not published")
+    mine = {f["sha256"] for f in me["files"]}
+    same = [facts(r) for k, r in pubs.items() if k != folder and mine & {f["sha256"] for f in r["files"]}]
+    try:
+        if store.db is not None:
+            near, engine = catalog.similar(store.db, DB_BUCKET, DB_SCHEMA, folder, limit)
+        elif store.mode == "local":
+            def vec(r):
+                cached = _local_vectors.get(r["key_prefix"])
+                if not cached or cached[0] != r.get("published"):
+                    _local_vectors[r["key_prefix"]] = cached = (r.get("published"), catalog.embed(catalog.document_text(r)))
+                return cached[1]
+            v = vec(me)
+            near = sorted(({"folder": k, "similarity": round(sum(a * b for a, b in zip(v, vec(r))), 3)}
+                           for k, r in pubs.items() if k != folder), key=lambda x: -x["similarity"])[:limit]
+            engine = "in-memory (local mode)"
+        else:
+            near, engine = [], "needs VAST DB's data network"
+    except llm.LLMError as e:
+        near, engine = [], "the embedding model is unavailable (%s)" % _model_reason(e)
+    # The nearest neighbours are always "nearest", even among unrelated datasets: only list ones close in
+    # meaning (cosine >= SIMILAR_MIN), so a handful of published datasets doesn't make a satellite SST
+    # product look similar to microscopy images.
+    out = []
+    for n in near:
+        if n["folder"] in pubs and n["similarity"] >= SIMILAR_MIN:
+            out.append(facts(pubs[n["folder"]]) | {"similarity": n["similarity"]})
+    return {"similar": out, "same_files": same, "engine": engine, "threshold": SIMILAR_MIN}
 
 
 @app.get("/api/variables")
@@ -291,6 +423,164 @@ def drafts():
     return {"drafts": {k: json.loads(v["record"]) for k, v in latest.items()}, "source": "VAST DB fair.records"}
 
 
+# ---------------------------------------------------------------- the data, queried in place
+
+QUERY_ROWS, EXPORT_ROWS = 10_000, 1_000_000   # JSON answers; CSV and Parquet downloads
+
+
+def _table_sink():
+    if store.db is not None:
+        return tables.VastTables(store.db, DB_BUCKET, DATA_SCHEMA)
+    if store.mode == "local":
+        return tables.LocalTables(store.root / "fair-db" / "data")
+    raise HTTPException(503, "tables are read over VAST DB's data network: run the portal in its pod, or in local mode")
+
+
+def _table_entry(r: dict, name: str) -> dict:
+    t = next((t for t in r.get("tables") or [] if t["table"] == name), None)
+    if not t:
+        raise HTTPException(404, f"{name} is not a table of {r.get('pid') or r.get('key_prefix')}")
+    return t
+
+
+def _run_query(entry, columns, where, limit, with_summary=False, aggregate=None, order=None):
+    sink = _table_sink()
+    try:
+        return tables.query(sink, entry, columns, where, limit, with_summary=with_summary, aggregate=aggregate,
+                            order=order)
+    except ValueError as e:   # the question: an unknown column, a value that doesn't fit
+        raise HTTPException(400, str(e))
+    except Exception as e:  # noqa: BLE001 - the table store: say so, rather than fail the page
+        raise HTTPException(503, f"{entry['location']} couldn't be read just now ({str(e)[:160]})")
+
+
+def _json_rows(t) -> list[dict]:
+    """Rows as JSON values: times as ISO 8601, and float32 at its own precision (15.74, not 15.7399997)."""
+    import pyarrow as pa
+    for i, f in enumerate(t.schema):
+        if pa.types.is_float32(f.type):
+            t = t.set_column(i, f.name, pa.array([None if v is None else float(v) for v in t.column(i).cast(pa.string()).to_pylist()]))
+    return [{k: (v.isoformat() if hasattr(v, "isoformat") else v) for k, v in row.items()} for row in t.to_pylist()]
+
+
+@app.post("/api/query")
+async def query(request: Request):
+    """A published dataset's table, read in place: {folder, table, columns, where: ["lat>=40", ...], limit,
+    summary}. Returns the rows, the equivalent SQL, and (with summary) statistics over every matching row."""
+    b = await request.json()
+    r = record_for(b.get("folder", ""))
+    if r.get("status") != "published":
+        raise HTTPException(409, "only published datasets are loaded as tables")
+    entry = _table_entry(r, b.get("table", ""))
+    limit = max(1, min(int(b.get("limit") or 100), QUERY_ROWS))
+    import time
+    t0 = time.time()
+    out = _run_query(entry, b.get("columns"), [w for w in b.get("where") or [] if w.strip()], limit,
+                     with_summary=bool(b.get("summary")), aggregate=b.get("aggregate"), order=b.get("order"))
+    out["rows"], out["ms"] = _json_rows(out["rows"]), round((time.time() - t0) * 1000)
+    out["api"] = "%s/tables/%s" % (r.get("landing_page", ""), entry["table"])
+    return out
+
+
+_suggestions: dict[tuple, list] = {}   # (dataset, publication time) -> checked example questions
+
+
+@app.get("/api/suggest/{folder:path}")
+def suggest(folder: str):
+    """Example questions for a published dataset's tables, from the model, each with a query already checked
+    against the tables (so running one needs no second model call). Cached per publication."""
+    r = record_for(folder)
+    if r.get("status") != "published" or not r.get("tables"):
+        return {"suggestions": []}
+    if r.get("questions"):   # made by the function when the tables were loaded
+        return {"suggestions": r["questions"], "model": "record"}
+    key = (folder, r.get("published"), tuple(t["table"] for t in r["tables"]))
+    if key not in _suggestions:
+        try:
+            _suggestions[key] = nlquery.suggest(r, summary(r)["title"] or r["name"])
+        except llm.LLMError as e:
+            return {"suggestions": [], "error": "the model is unavailable (%s)" % _model_reason(e)}
+    return {"suggestions": _suggestions[key], "model": llm.CHAT_MODEL}
+
+
+@app.post("/api/ask")
+async def ask(request: Request):
+    """A question in plain language: the model proposes a query from the tables' curated metadata, it is
+    checked like any other, and run. Returns the query as read (to show and edit) and its answer."""
+    b = await request.json()
+    r = record_for(b.get("folder", ""))
+    if r.get("status") != "published" or not r.get("tables"):
+        raise HTTPException(409, "only a published dataset with tables can be asked")
+    question = (b.get("question") or "").strip()
+    if not question:
+        raise HTTPException(400, "ask a question")
+    import time
+    t0 = time.time()
+    try:
+        q = nlquery.interpret(question, r, summary(r)["title"] or r["name"])
+    except llm.LLMError as e:
+        raise HTTPException(503, "the model is unavailable (%s); use the controls below instead" % _model_reason(e))
+    except ValueError as e:
+        raise HTTPException(422, "the question couldn't be turned into a valid query (%s); try rephrasing it" % e)
+    if q.get("unanswerable"):
+        return {"unanswerable": q["unanswerable"], "model": llm.CHAT_MODEL}
+    entry = _table_entry(r, q["table"])
+    t1 = time.time()
+    out = _run_query(entry, q["columns"], q["where"], q["limit"], with_summary=not q["aggregate"], aggregate=q["aggregate"],
+                     order=q["order"])
+    out["rows"], out["ms"] = _json_rows(out["rows"]), round((time.time() - t1) * 1000)
+    out.update(interpreted=q, model=llm.CHAT_MODEL, model_ms=round((t1 - t0) * 1000))
+    return out
+
+
+def table_api(pid: str, name: str, request: Request):
+    """/id/<pid>/tables/<name>?columns=a,b&where=a>=1&where=b=x&limit=100&format=json|csv|parquet"""
+    import io
+    r = next((r for r in store.list_records() if r.get("pid") == pid and r.get("status") == "published"), None)
+    if not r:
+        raise HTTPException(404, f"unknown identifier {pid}")
+    entry = _table_entry(r, name)
+    p = request.query_params
+    fmt = p.get("format", "json")
+    if fmt not in ("json", "csv", "parquet"):
+        raise HTTPException(400, "format is json, csv or parquet")
+    cap = QUERY_ROWS if fmt == "json" else EXPORT_ROWS
+    limit = min(int(p.get("limit") or (100 if fmt == "json" else cap)), cap)
+    columns = [c for c in (p.get("columns") or "").split(",") if c] or None
+    agg = None
+    if p.get("agg"):   # agg=avg:sst (or agg=count) and optionally by=year
+        fn, _, col = p["agg"].partition(":")
+        agg = {"fn": fn, "column": col or None, "by": p.get("by") or None}
+    order = None
+    if p.get("order"):   # order=sst or order=-sst (descending)
+        order = {"column": p["order"].lstrip("-"), "desc": p["order"].startswith("-")}
+    out = _run_query(entry, columns, p.getlist("where"), limit, aggregate=agg, order=order)
+    headers = {"Link": f'<{r.get("landing_page", "")}>; rel="cite-as"', "X-Source-SHA256": entry["source_sha256"],
+               "X-Query-SQL": " ".join(out["sql"].split())}
+    if fmt == "json":
+        return Response(json.dumps({"identifier": pid, "table": entry["location"], "source": entry["source"],
+                                    "source_sha256": entry["source_sha256"], "sql": out["sql"],
+                                    "columns": [c for c in entry["columns"] if c["name"] in out["columns"]],
+                                    "rows": _json_rows(out["rows"])}, default=str),
+                        media_type="application/json", headers=headers)
+    buf = io.BytesIO()
+    if fmt == "csv":
+        import pyarrow as pa
+        import pyarrow.csv as pcsv
+        rows = out["rows"]
+        for i, f in enumerate(rows.schema):   # float32 at its own precision (12.39, not 12.389999)
+            if pa.types.is_float32(f.type):
+                rows = rows.set_column(i, f.name, rows.column(i).cast(pa.string()))
+        pcsv.write_csv(rows, buf)
+        media = "text/csv"
+    else:
+        import pyarrow.parquet as pq
+        pq.write_table(out["rows"], buf)
+        media = "application/vnd.apache.parquet"
+    headers["Content-Disposition"] = f'attachment; filename="{name}.{fmt}"'
+    return Response(buf.getvalue(), media_type=media, headers=headers)
+
+
 @app.get("/api/log")
 def log():
     return {"log": list(store.log)}
@@ -334,6 +624,9 @@ def landing(pid: str, request: Request):
     if "/files/" in pid:
         pid, _, fname = pid.partition("/files/")
         return download(pid, fname)
+    if "/tables/" in pid:
+        pid, _, tname = pid.partition("/tables/")
+        return table_api(pid, tname, request)
     head, _, tail = pid.rpartition("/")
     if tail in curate.OUTPUTS:
         pid, name = head, tail

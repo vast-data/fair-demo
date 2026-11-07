@@ -55,7 +55,7 @@ def fn(monkeypatch):
     monkeypatch.setitem(sys.modules, "vast.dataengine.sdk", sdk)
     monkeypatch.syspath_prepend(str(ROOT / "function"))
     main = importlib.import_module("main")
-    tables = {"files": [], "records": []}
+    tables = {"files": [], "records": [], "tables": []}
     monkeypatch.setattr(main, "insert", lambda t, row: tables[t].append(row))
     monkeypatch.setattr(main, "select", lambda t, folder=None, sha256=None: [
         r for r in tables[t] if (r["folder"] == folder if folder is not None else r.get("sha256") == sha256)])
@@ -168,3 +168,147 @@ def test_duplicates_ignore_deleted_copies(fn, tmp_path):
     fn.handler(ctx, event("fair-raw", "climate/a/_READY"))
     rec = json.loads(fn.tables["records"][-1]["record"])
     assert "duplicates" not in rec
+
+
+def test_publish_loads_the_data_as_a_queryable_table(fn, tmp_path):
+    """The published data itself becomes a table: columns carry the file's units and CF names, the crate
+    lists it as a distribution, and a filtered read is pushed down to the table."""
+    from fairdemo import tables
+    fn.table_sink = tables.LocalTables(tmp_path / "db")
+    ctx = types.SimpleNamespace(logger=Logger())
+    put_file(fn, "climate/sst/a.nc", fixtures.netcdf, tmp_path)
+    fn.handler(ctx, event("fair-raw", "climate/sst/a.nc"))
+    fn._clients["s3"].put_object(Bucket="fair-raw", Key="climate/sst/_READY", Body=b"")
+    fn.handler(ctx, event("fair-raw", "climate/sst/_READY"))
+    fn._clients["s3"].put_object(Bucket="fair-raw", Key="climate/sst/_fair/review.json",
+                                 Body=json.dumps({"reviewer": "ada", "decisions": {}}))
+    assert "pid" in fn.handler(ctx, event("fair-raw", "climate/sst/_fair/review.json"))
+    rec = json.loads(fn._clients["s3"].objects[("fair-raw", "climate/sst/_fair/record.json")])
+    (t,) = rec["tables"]
+    assert t["table"] == "climate_sst" and t["location"] == "fair-db/data/climate_sst" and t["rows"] == 60
+    sst = next(c for c in t["columns"] if c["name"] == "sst")
+    assert sst["units"] == "degC" and sst["standard_name"] == "sea_surface_temperature"
+    assert [c["name"] for c in t["columns"]][:3] == ["time", "lat", "lon"]
+    assert fn.tables["tables"][-1]["source_sha256"] == rec["files"][0]["sha256"]
+    crate = json.loads(fn._clients["s3"].objects[("fair-raw", "climate/sst/ro-crate-metadata.json")])
+    dl = next(g for g in crate["@graph"] if g["@id"] == "#table-climate_sst")
+    assert dl["@type"] == "DataDownload" and "/tables/climate_sst" in dl["contentUrl"]
+    assert "Query it in place" in fn._clients["s3"].objects[("fair-raw", "climate/sst/ro-crate-preview.html")].decode()
+
+    out = tables.query(fn.table_sink, t, ["lat", "sst"], ["lat>=20"], 100, with_summary=True)
+    assert out["rows"].num_rows == 30 and min(out["rows"]["lat"].to_pylist()) == 20
+    assert out["matched"] == 30 and out["summary"][1]["column"] == "sst"
+
+    assert out["sql"] == 'SELECT "lat", "sst"\nFROM vast."fair-db/data".climate_sst\nWHERE "lat" >= 20.0\nLIMIT 100'
+
+    # Republished unchanged: the table is kept, not loaded again.
+    before = fn.table_sink._path("climate_sst").stat().st_mtime_ns
+    fn._clients["s3"].put_object(Bucket="fair-raw", Key="climate/sst/_fair/review.json",
+                                 Body=json.dumps({"reviewer": "bob", "decisions": {}}))
+    fn.handler(ctx, event("fair-raw", "climate/sst/_fair/review.json"))
+    assert fn.table_sink._path("climate_sst").stat().st_mtime_ns == before
+
+
+def test_a_curator_can_publish_as_files_only(fn, tmp_path):
+    """The review's "tables": false publishes the dataset without loading its data into VAST DataBase; the
+    files, record, crate and identifier are unchanged by the choice."""
+    from fairdemo import tables
+    fn.table_sink = tables.LocalTables(tmp_path / "db")
+    ctx = types.SimpleNamespace(logger=Logger())
+    put_file(fn, "climate/sst/a.nc", fixtures.netcdf, tmp_path)
+    fn.handler(ctx, event("fair-raw", "climate/sst/a.nc"))
+    fn._clients["s3"].put_object(Bucket="fair-raw", Key="climate/sst/_READY", Body=b"")
+    fn.handler(ctx, event("fair-raw", "climate/sst/_READY"))
+    fn._clients["s3"].put_object(Bucket="fair-raw", Key="climate/sst/_fair/review.json",
+                                 Body=json.dumps({"reviewer": "ada", "decisions": {}, "tables": False}))
+    out = fn.handler(ctx, event("fair-raw", "climate/sst/_fair/review.json"))
+    assert "pid" in out and out["tables"] == 0
+    rec = json.loads(fn._clients["s3"].objects[("fair-raw", "climate/sst/_fair/record.json")])
+    assert rec["status"] == "published" and rec["tables_status"] == "none" and rec["tables"] == [] \
+        and rec["tables_wanted"] is False
+    assert not fn.tables["tables"]
+    crate = json.loads(fn._clients["s3"].objects[("fair-raw", "climate/sst/ro-crate-metadata.json")])
+    assert not any(str(g["@id"]).startswith("#table-") for g in crate["@graph"])
+
+
+def _publish_sst(fn, tmp_path):
+    ctx = types.SimpleNamespace(logger=Logger())
+    put_file(fn, "climate/sst/a.nc", fixtures.netcdf, tmp_path)
+    fn.handler(ctx, event("fair-raw", "climate/sst/a.nc"))
+    fn._clients["s3"].put_object(Bucket="fair-raw", Key="climate/sst/_READY", Body=b"")
+    fn.handler(ctx, event("fair-raw", "climate/sst/_READY"))
+    fn._clients["s3"].put_object(Bucket="fair-raw", Key="climate/sst/_fair/review.json",
+                                 Body=json.dumps({"reviewer": "ada", "decisions": {}}))
+    out = fn.handler(ctx, event("fair-raw", "climate/sst/_fair/review.json"))
+    return out, json.loads(fn._clients["s3"].objects[("fair-raw", "climate/sst/_fair/record.json")])
+
+
+@pytest.mark.parametrize("failure", ["write", "read", "crash"])
+def test_tables_never_stop_a_dataset_publishing(fn, tmp_path, monkeypatch, failure):
+    """Whatever goes wrong loading tables (the store refuses a write, a file can't be read, the converter
+    blows up), the dataset is published as files, and the record says why there is no table."""
+    from fairdemo import tables
+    sink = tables.LocalTables(tmp_path / "db")
+    if failure == "write":
+        monkeypatch.setattr(sink, "replace", lambda name, t: (_ for _ in ()).throw(RuntimeError("type refused")))
+    elif failure == "read":
+        monkeypatch.setattr(tables, "MAX_CELLS", 10)
+    else:
+        monkeypatch.setattr(tables, "convert", lambda *a, **k: (_ for _ in ()).throw(MemoryError()))
+    fn.table_sink = sink
+    out, rec = _publish_sst(fn, tmp_path)
+    assert out["pid"].startswith("ark:/99999/fk4") and rec["status"] == "published"
+    assert rec["tables"] == [] and rec["tables_status"] == "none" and rec["table_notes"]
+    assert {"write": "couldn't be written", "read": "cell budget", "crash": "not loaded as a table"}[failure] in rec["table_notes"][0]
+    crate = json.loads(fn._clients["s3"].objects[("fair-raw", "climate/sst/ro-crate-metadata.json")])
+    assert not any(str(g["@id"]).startswith("#table-") for g in crate["@graph"])
+    assert [r["status"] for r in fn.tables["records"]][-2:] == ["published", "published"]
+
+
+def test_tables_are_listed_after_publication(fn, tmp_path):
+    from fairdemo import tables
+    fn.table_sink = tables.LocalTables(tmp_path / "db")
+    out, rec = _publish_sst(fn, tmp_path)
+    assert out["tables"] == 1 and rec["tables_status"] == "loaded"
+    assert fn.tables["records"][-1]["actor"] == "fair-curate/tables"   # not mistaken for the model's draft
+    assert fn.tables["records"][-2]["actor"] == "ada"
+
+
+def test_an_unfinished_table_load_is_retried_by_replaying_the_review(fn, tmp_path, monkeypatch):
+    """The function stops part-way through loading tables: the dataset is published, the record says
+    loading. The same review, delivered again, loads only the tables."""
+    from fairdemo import tables
+    fn.table_sink = tables.LocalTables(tmp_path / "db")
+    real = fn.publish_tables
+    monkeypatch.setattr(fn, "publish_tables", lambda *a: 0)   # stopped before loading
+    out, rec = _publish_sst(fn, tmp_path)
+    assert rec["status"] == "published" and rec["tables_status"] == "loading" and not rec["tables"]
+    monkeypatch.setattr(fn, "publish_tables", real)
+    versions = len(fn.tables["records"])
+    ctx = types.SimpleNamespace(logger=Logger())
+    again = fn.handler(ctx, event("fair-raw", "climate/sst/_fair/review.json"))
+    rec = json.loads(fn._clients["s3"].objects[("fair-raw", "climate/sst/_fair/record.json")])
+    assert again == {"tables_retried": "climate/sst", "tables": 1} and rec["tables_status"] == "loaded"
+    assert len(fn.tables["records"]) == versions + 1 and fn.tables["records"][-1]["actor"] == "fair-curate/tables"
+    # Once loaded, a further redelivery does nothing.
+    assert "skipped" in fn.handler(ctx, event("fair-raw", "climate/sst/_fair/review.json"))
+
+
+def test_a_load_that_keeps_stopping_the_function_is_given_up(fn, tmp_path, monkeypatch):
+    """Each redelivery retries the tables, but after two loads that never finished, it stops trying."""
+    from fairdemo import tables
+    fn.table_sink = tables.LocalTables(tmp_path / "db")
+
+    class Killed(BaseException):   # what the pod's death looks like from inside: nothing after it runs
+        pass
+    monkeypatch.setattr(fn, "load_tables", lambda *a, **k: (_ for _ in ()).throw(Killed()))
+    with pytest.raises(Killed):
+        _publish_sst(fn, tmp_path)
+    ctx = types.SimpleNamespace(logger=Logger())
+    with pytest.raises(Killed):   # first redelivery: second attempt
+        fn.handler(ctx, event("fair-raw", "climate/sst/_fair/review.json"))
+    out = fn.handler(ctx, event("fair-raw", "climate/sst/_fair/review.json"))   # third: given up
+    rec = json.loads(fn._clients["s3"].objects[("fair-raw", "climate/sst/_fair/record.json")])
+    assert out == {"tables_retried": "climate/sst", "tables": 0}
+    assert rec["status"] == "published" and rec["tables_status"] == "none" and "stopped the function 2 times" in rec["table_notes"][0]
+    assert "skipped" in fn.handler(ctx, event("fair-raw", "climate/sst/_fair/review.json"))

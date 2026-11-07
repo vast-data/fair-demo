@@ -210,6 +210,8 @@ class LocalStore(S3Store):
 
         main.insert, main.select = insert, select
         main._clients.update(s3=self.s3, db=None)
+        from fairdemo import tables
+        main.table_sink = tables.LocalTables(self.root / "fair-db" / "data")   # stands in for VAST DataBase
         return main
 
     def _event(self, bucket, key):
@@ -250,7 +252,7 @@ def from_env() -> S3Store:
     """FAIR_STORE=local (default when no cluster state) or cluster.
 
     In the portal's pod, S3 and VAST DB are reached directly, with keys from the environment, and search
-    uses VAST DB's vector index. Elsewhere (FAIR_IN_CLUSTER unset) S3 works through FAIR_S3_ENDPOINT, but
+    uses VAST Vector Search in VAST DataBase. Elsewhere (FAIR_IN_CLUSTER unset) S3 works through FAIR_S3_ENDPOINT, but
     search needs the cluster's data network."""
     state = ROOT / "deploy/.state.json"
     mode = os.environ.get("FAIR_STORE") or ("cluster" if state.exists() else "local")

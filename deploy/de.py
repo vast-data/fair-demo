@@ -254,8 +254,16 @@ def step_s3_identity():
                                         "local_provider_id": t["local_provider_id"]})
     st = load_state()
     have = {k["access_key"] for k in (vms("GET", f"users/{u['id']}/").get("access_keys") or [])}
-    if st.get("access_key") not in have:
-        k = vms("POST", f"users/{u['id']}/access_keys/", json={"tenant_id": tid})
+    # VMS doesn't list the keys of a user in a non-default tenant, so an empty list doesn't mean the key
+    # in the state file is gone: keep it. Make one only when there is none, or VMS lists others but not it.
+    if not st.get("access_key") or (have and st["access_key"] not in have):
+        r = requests.post(f"{VMS}/api/users/{u['id']}/access_keys/", auth=ADMIN, verify=False, timeout=60,
+                          json={"tenant_id": tid})
+        if r.status_code == 400 and "key_limit_reached" in r.text:
+            raise SystemExit(f"{BUCKET_OWNER} already has the maximum number of S3 keys and none is in "
+                             f"{STATE.name}: remove an unused key in VMS (Users > {BUCKET_OWNER}), then re-run")
+        r.raise_for_status()
+        k = r.json()
         save_state(access_key=k["access_key"], secret_key=k["secret_key"])
     log(f"view policy {S3_POLICY}, user {BUCKET_OWNER} (id {u['id']}) with S3 key {load_state()['access_key']}")
 
@@ -439,7 +447,8 @@ def step_image():
     for f in ("main.py", "Dockerfile"):
         shutil.copy(ROOT / "function" / f, ctxdir / f)
     shutil.copytree(ROOT / "fairdemo", ctxdir / "fairdemo-src/fairdemo", ignore=shutil.ignore_patterns("__pycache__"))
-    shutil.copy(ROOT / "pyproject.toml", ctxdir / "fairdemo-src/pyproject.toml")
+    for f in ("pyproject.toml", "README.md"):   # pyproject.toml names README.md as the package readme
+        shutil.copy(ROOT / f, ctxdir / "fairdemo-src" / f)
     for w in (build / "wheels").glob("*.whl"):
         shutil.copy(w, ctxdir / "wheels" / w.name)
     tag = image_version()
@@ -561,7 +570,13 @@ def step_pipeline():
         "function_deployments": [{
             "name": "fair-curate", "function_vrn": fn["vrn"], "revision": rev,
             "config": {"environment_variables": [{"name": n, "value": v} for n, v in env],
-                       "secrets": [S3_SECRET, LLM_SECRET, VMS_SECRET]}}],
+                       "secrets": [S3_SECRET, LLM_SECRET, VMS_SECRET]},
+            # DataEngine's defaults (256Mi, 500m) are too small to load a published dataset as tables:
+            # converting the CMS ROOT file alone peaks above 256 MB. Each file converts in a child process
+            # (fairdemo/tables.py), so running short of memory loses that file's table, not the function.
+            "resources": {"min_cpu": "250m", "max_cpu": C("FUNCTION_MAX_CPU", "2"),
+                          "min_memory": "512Mi", "max_memory": C("FUNCTION_MAX_MEMORY", "2Gi"),
+                          "timeout": int(C("FUNCTION_TIMEOUT", "600"))}}],   # Knative allows at most 600
         "links": [{"source": ["fair-raw", "fair-estate", "fair-estate-review"]
                    + [n for n, t in (("fair-raw-nfs", RAW_NFS_TRIGGER), ("fair-estate-nfs", ESTATE_NFS_TRIGGER)) if t in triggers],
                    "destination": ["fair-curate"], "topic": tr["topic"]}],

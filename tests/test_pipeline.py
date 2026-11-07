@@ -1,5 +1,7 @@
 import json
 
+import awkward as ak
+import numpy as np
 import pytest
 
 from fairdemo import curate, extract, fairscore, rocrate
@@ -176,3 +178,234 @@ def test_rank_adds_a_small_boost_for_query_words():
     assert [r["title"] for r in got] == ["Daily sea surface temperature", "Road traffic counts"]
     assert got[0]["meaning"] == 0.37 and got[0]["words"] == 1.0 and got[0]["similarity"] == round(0.37 + catalog.WORD_BOOST, 3)
     assert got[1]["similarity"] == 0.40   # no query word in it: meaning alone
+
+
+@pytest.mark.parametrize("name,rows,first", [("t.csv", 2, "date"), ("t.parquet", 2, "id"), ("t.fits", 3, "time"),
+                                             ("t.nc", 60, "time"), ("t.vcf.gz", 3, "chrom"), ("t.root", 3, "entry")])
+def test_every_tabular_format_becomes_a_table(tmp_path, name, rows, first):
+    from fairdemo import tables
+    p = tmp_path / name
+    fixtures.ALL[name](p)
+    parts = tables.convert(p, extract.profile(p))
+    part, t, sources = parts[0]
+    assert t.num_rows == rows and t.column_names[0] == first
+    assert all(s is None or s in {v["name"] for v in extract.profile(p)["variables"]} or s in ("CHROM", "POS", "ID", "REF", "ALT", "QUAL", "FILTER")
+               for s in sources.values())
+
+
+def test_root_jagged_branches_become_a_child_table(tmp_path):
+    import uproot
+    from fairdemo import tables
+    p = tmp_path / "j.root"
+    with uproot.recreate(p) as f:
+        f["Events"] = {"nMuon": np.array([2, 1], dtype=np.int32),
+                       "Muon": ak.zip({"pt": ak.Array([[20.0, 30.0], [40.0]]), "eta": ak.Array([[0.1, 0.2], [0.3]])})}
+    parts = {part: t for part, t, _ in tables.convert(p, extract.profile(p))}
+    muon = next(t for k, t in parts.items() if k.lower().endswith("muon"))
+    assert muon.to_pydict()["entry"] == [0, 0, 1] and muon.to_pydict()["idx"] == [0, 1, 0]
+    assert sorted(c for c in muon.column_names if c not in ("entry", "idx")) == ["eta", "pt"]
+
+
+def test_filters_are_parsed_never_executed():
+    from fairdemo import tables
+    cols = [{"name": "lat", "type": "float"}, {"name": "name", "type": "string"}, {"name": "n", "type": "int64"}]
+    assert tables.parse_where(["lat>=40", "name=O'Brien", "n!=3"], cols) == [
+        ("lat", ">=", 40.0), ("name", "=", "O'Brien"), ("n", "!=", 3)]
+    for bad in ("lat>=forty", "nope=1", "lat; drop table x", "lat ~ 3"):
+        with pytest.raises(ValueError):
+            tables.parse_where([bad], cols)
+    entry = {"location": "fair-db/data/t"}
+    assert "'O''Brien'" in tables.sql(entry, ["name"], [("name", "=", "O'Brien")], 5)
+
+
+def test_messy_csv_still_becomes_a_table(tmp_path):
+    """A code column with letters far down, a ragged row, and Latin-1 text."""
+    from fairdemo import tables
+    p = tmp_path / "messy.csv"
+    rows = ["id,code,city,value"] + ["%d,%d,Zürich,%d.5" % (i, i, i) for i in range(5000)]
+    rows += ["5000,A12,Zürich,1.0", "5001,7", "5002,8,Köln,2.5"]
+    p.write_bytes("\n".join(rows).encode("latin-1"))
+    notes = []
+    (part, t, _), = tables.convert(p, extract.profile(p), notes)
+    assert t.num_rows == 5002 and str(t.schema.field("code").type) == "string"
+    assert str(t.schema.field("value").type) == "double" and t.column("city")[0].as_py() == "Zürich"
+    assert any("malformed" in n for n in notes)
+
+
+def test_awkward_types_become_portable_ones(tmp_path):
+    import datetime as dt
+    import decimal
+    import pyarrow as pa, pyarrow.parquet as pq
+    from fairdemo import tables
+    p = tmp_path / "types.parquet"
+    pq.write_table(pa.table({
+        "u32": pa.array([1, 2], pa.uint32()), "u64big": pa.array([2 ** 64 - 1, 1], pa.uint64()),
+        "dec": pa.array([decimal.Decimal("1.25"), None], pa.decimal128(5, 2)),
+        "ts": pa.array([dt.datetime(2024, 1, 1, 0, 0, 0, 1)] * 2, pa.timestamp("ns", tz="UTC")),
+        "tod": pa.array([dt.time(1, 2), dt.time(3, 4)], pa.time64("us")),
+        "nested": pa.array([{"a": 1}, {"a": 2}]), "blob": pa.array([b"x", b"y"], pa.binary())}), p)
+    notes = []
+    (_, t, _), = tables.convert(p, extract.profile(p), notes)
+    types = {f.name: str(f.type) for f in t.schema}
+    assert types == {"u32": "int64", "u64big": "string", "dec": "double", "ts": "timestamp[us]", "tod": "string"}
+    assert sum("left out" in n for n in notes) == 2
+
+
+def test_netcdf_text_variables_are_left_in_the_file(tmp_path):
+    import netCDF4
+    from fairdemo import tables
+    p = tmp_path / "s.nc"
+    with netCDF4.Dataset(p, "w") as ds:
+        ds.createDimension("station", 3); ds.createDimension("nchar", 4)
+        ds.createVariable("name", "S1", ("station", "nchar"))[:] = netCDF4.stringtochar(np.array(["abcd", "efgh", "ijkl"], "S4"))
+        ds.createVariable("temp", "f4", ("station",))[:] = [1.5, 2.5, 3.5]
+    (_, t, _), = tables.convert(p, extract.profile(p))
+    assert t.column_names == ["station", "temp"] and t.num_rows == 3
+
+
+def test_a_file_over_the_byte_limit_is_not_read(tmp_path, monkeypatch):
+    from fairdemo import tables
+    p = tmp_path / "t.csv"
+    fixtures.csv(p)
+    monkeypatch.setattr(tables, "MAX_FILE_BYTES", 10)
+    with pytest.raises(tables.TooBig):
+        tables.convert(p, extract.profile(p))
+
+
+def test_junk_and_empty_files_make_no_table(tmp_path):
+    import os
+    from fairdemo import tables
+    junk, empty = tmp_path / "r.csv", tmp_path / "h.csv"
+    junk.write_bytes(b"a,b\n" + os.urandom(4096))
+    empty.write_text("a,b,c\n")
+    with pytest.raises(ValueError):
+        tables.convert(junk, extract.profile(junk))
+    notes = []
+    assert tables.convert(empty, extract.profile(empty), notes) == [] and "no rows" in notes[0]
+
+
+def _toy_table(tmp_path):
+    import pyarrow as pa
+    from fairdemo import tables
+    t = pa.table({"lat": pa.array([10.0, 55.0, 58.0, 70.0], pa.float32()), "lon": pa.array([10.0, 335.0, 345.0, 355.0], pa.float32()),
+                  "sst": pa.array([25.0, 12.0, 14.0, None], pa.float32()), "region": ["S", "N", "N", "Arctic"]})
+    sink = tables.LocalTables(tmp_path / "db"); sink.replace("toy", t)
+    cols = tables.column_stats(t, {"lat": "lat", "lon": "lon", "sst": "sst", "region": "region"})
+    for c in cols:
+        c["units"] = {"lat": "degrees_north", "lon": "degrees_east", "sst": "Celsius"}.get(c["name"])
+    entry = {"table": "toy", "location": "fair-db/data/toy", "rows": 4, "source": "toy.nc", "columns": cols}
+    return sink, entry
+
+
+def test_aggregates_and_ordering(tmp_path):
+    from fairdemo import tables
+    sink, entry = _toy_table(tmp_path)
+    out = tables.query(sink, entry, None, ["lat>=50"], 10, aggregate={"fn": "avg", "column": "sst", "by": "region"},
+                       order={"column": "avg_sst", "desc": True})
+    assert out["rows"].to_pylist() == [{"region": "N", "avg_sst": 13.0}, {"region": "Arctic", "avg_sst": None}] or \
+        out["rows"].to_pylist()[0] == {"region": "N", "avg_sst": 13.0}
+    assert "GROUP BY \"region\"" in out["sql"] and "ORDER BY avg_sst DESC" in out["sql"]
+    top = tables.query(sink, entry, ["lat", "sst"], [], 2, order={"column": "sst", "desc": True})
+    assert top["rows"].column("sst").to_pylist() == [25.0, 14.0]
+    assert tables.query(sink, entry, None, [], 5, aggregate={"fn": "count"})["rows"].to_pylist() == [{"count": 4}]
+    for bad in ({"fn": "avg", "column": "region"}, {"fn": "median", "column": "sst"}, {"fn": "max", "column": "nope"}):
+        with pytest.raises(ValueError):
+            tables.query(sink, entry, None, [], 5, aggregate=bad)
+    with pytest.raises(ValueError):
+        tables.query(sink, entry, None, [], 5, order={"column": "nope"})
+
+
+def test_questions_become_checked_queries(tmp_path, monkeypatch):
+    """The model proposes; the proposal is checked like any query. One wrong answer is sent back with the
+    reason; a second is refused. Western longitudes are converted here, not by the model."""
+    from fairdemo import llm, nlquery
+    sink, entry = _toy_table(tmp_path)
+    record = {"tables": [entry]}
+    replies, prompts = [], []
+
+    def fake(system, user, **kw):
+        prompts.append(user)
+        return replies.pop(0)
+    monkeypatch.setattr(llm, "chat_json", fake)
+    good = {"table": "toy", "columns": ["sst"], "where": ["lat >= 50", "lon >= 330", "lon <= 350"],
+            "aggregate": {"fn": "avg", "column": "sst", "by": None}, "limit": 20, "explanation": "average sst in the box"}
+    replies[:] = [good]
+    q = nlquery.interpret("average temperature north of 50N between 30 and 10 degrees west", record, "Toy")
+    assert q["where"] == good["where"] and q["aggregate"]["fn"] == "avg"
+    assert "30 degrees west = 330, 10 degrees west = 350" in prompts[-1] and "values such as 'N'" in prompts[-1]
+    # a made-up column, then corrected
+    replies[:] = [dict(good, columns=["temperature"]), good]
+    assert nlquery.interpret("q", record, "Toy")["columns"] == ["sst"] and "refused: no column temperature" in prompts[-1]
+    # an empty range is a slip, sent back
+    replies[:] = [dict(good, where=["lon >= 330", "lon <= 330"]), good]
+    nlquery.interpret("q", record, "Toy")
+    assert "select nothing" in prompts[-1]
+    # wrong twice: refused
+    replies[:] = [dict(good, where=["lat >= north"]), dict(good, where=["sst; drop table toy"])]
+    with pytest.raises(ValueError):
+        nlquery.interpret("q", record, "Toy")
+    replies[:] = [{"unanswerable": "no funding information"}]
+    assert nlquery.interpret("who funded it?", record, "Toy") == {"unanswerable": "no funding information"}
+
+
+def test_a_converter_that_dies_only_loses_its_own_table(tmp_path, monkeypatch):
+    """On the cluster each file converts in a child process: if the kernel kills it for memory (SIGKILL)
+    or a library crashes, the load notes it and the function carries on."""
+    import os, signal, sys as _sys
+    from fairdemo import tables
+    if not hasattr(os, "fork"):
+        pytest.skip("needs fork")
+    monkeypatch.setattr(tables, "ISOLATE", True)
+    sink = tables.LocalTables(tmp_path / "db")
+    p = tmp_path / "t.csv"
+    fixtures.csv(p)
+    prof = extract.profile(p)
+    record = {"key_prefix": "test/ds", "files": [dict(prof, name="t.csv")], "variables": prof["variables"]}
+    got, notes = tables.load(sink, record, lambda name: p)
+    assert [t["table"] for t in got] == ["test_ds"] and got[0]["rows"] == 2 and not notes
+    monkeypatch.setattr(tables, "convert", lambda *a, **k: os.kill(os.getpid(), signal.SIGKILL))
+    got, notes = tables.load(sink, record, lambda name: p)
+    assert got == [] and "ran out of memory or crashed" in notes[0]
+
+
+def test_vast_predicates_name_columns_not_methods():
+    """VCF tables have a column called filter (and CSVs can have count): the predicate must mean the
+    column, not ibis's Table.filter method, or VAST DB is handed True instead of a comparison."""
+    import ibis
+    from fairdemo import tables
+    t = ibis.table({"filter": "string", "count": "int64", "af": "float64"}, name="t")
+    pred = tables.vast_predicate([("filter", "!=", "PASS"), ("count", ">", 3), ("af", ">=", 0.05)]).resolve(t)
+    assert type(pred.op()).__name__ == "And"
+    assert "NotEquals" in repr(pred) and "Greater" in repr(pred)
+
+
+def test_suggested_questions_are_checked_like_any_query(tmp_path, monkeypatch):
+    from fairdemo import llm, nlquery
+    sink, entry = _toy_table(tmp_path)
+    record = {"tables": [entry]}
+    monkeypatch.setattr(llm, "chat_json", lambda *a, **k: {"questions": [
+        {"question": "Average sea temperature by region", "table": "toy", "columns": [], "where": [],
+         "aggregate": {"op": "average", "column": "sst", "group_by": "region"}, "order": None, "limit": 10},
+        {"question": "Warmest 2 places", "table": "toy", "columns": ["lat", "sst"], "where": [], "aggregate": None,
+         "order": {"column": "sst", "direction": "desc"}, "limit": 2},
+        {"question": "Average sst per region", "table": "toy", "columns": [], "where": [],      # says per, no grouping
+         "aggregate": {"fn": "avg", "column": "sst"}, "order": None, "limit": 10},
+        {"question": "Made-up column", "table": "toy", "columns": ["depth"], "where": [], "limit": 5},
+        {"question": "warmest 2 places", "table": "toy", "columns": ["sst"], "where": [], "limit": 2}]})   # duplicate
+    got = nlquery.suggest(record, "Toy", n=6)
+    assert [g["question"] for g in got] == ["Average sea temperature by region", "Warmest 2 places"]
+    assert got[0]["query"]["aggregate"] == {"fn": "avg", "column": "sst", "by": "region"}
+    assert got[1]["query"]["order"] == {"column": "sst", "desc": True}
+
+
+def test_a_ranked_total_needs_a_grouping(tmp_path, monkeypatch):
+    """'Top 10 busiest roads' read as one grand total, sorted, is a slip: refused, so the model corrects it."""
+    from fairdemo import llm, nlquery
+    sink, entry = _toy_table(tmp_path)
+    bad = {"table": "toy", "columns": [], "where": [], "aggregate": {"fn": "sum", "column": "sst"},
+           "order": {"column": "sum_sst", "desc": True}, "limit": 10}
+    good = dict(bad, aggregate={"fn": "sum", "column": "sst", "by": "region"})
+    replies, prompts = [bad, good], []
+    monkeypatch.setattr(llm, "chat_json", lambda s, u, **k: prompts.append(u) or replies.pop(0))
+    q = nlquery.interpret("top regions by total sst", {"tables": [entry]}, "Toy")
+    assert q["aggregate"]["by"] == "region" and "group it with" in prompts[-1]
