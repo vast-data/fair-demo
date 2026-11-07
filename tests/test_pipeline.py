@@ -409,3 +409,28 @@ def test_a_ranked_total_needs_a_grouping(tmp_path, monkeypatch):
     monkeypatch.setattr(llm, "chat_json", lambda s, u, **k: prompts.append(u) or replies.pop(0))
     q = nlquery.interpret("top regions by total sst", {"tables": [entry]}, "Toy")
     assert q["aggregate"]["by"] == "region" and "group it with" in prompts[-1]
+
+
+def test_nan_is_stored_as_missing_and_answers_stay_valid_json(tmp_path):
+    """A TESS light curve marks gaps in the flux with NaN: averages skip them and the portal can send every row."""
+    import math
+    import pyarrow as pa
+    from astropy.io import fits as F
+    from fairdemo import tables
+    from portal.app import _json_rows
+    p = tmp_path / "lc.fits"
+    flux = np.array([1.0, np.nan, 3.0], dtype=np.float32)
+    cols = F.ColDefs([F.Column(name="TIME", format="D", array=np.arange(3.0)), F.Column(name="PDCSAP_FLUX", format="E", array=flux)])
+    F.HDUList([F.PrimaryHDU(), F.BinTableHDU.from_columns(cols, name="LIGHTCURVE")]).writeto(p)
+    _, t, sources = tables.convert(p, extract.profile(p))[0]
+    assert t.column("pdcsap_flux").null_count == 1   # names are lower-cased on load
+    sink = tables.LocalTables(tmp_path / "db"); sink.replace("lc", t)
+    entry = {"table": "lc", "location": "fair-db/data/lc", "rows": 3, "source": "lc.fits", "columns": tables.column_stats(t, sources)}
+    avg = tables.query(sink, entry, None, [], 5, aggregate={"fn": "avg", "column": "pdcsap_flux"})
+    assert avg["rows"].to_pylist() == [{"avg_pdcsap_flux": 2.0}]
+    rows = tables.query(sink, entry, None, [], 5, with_summary=True)
+    json.dumps(_json_rows(rows["rows"]), allow_nan=False)
+    json.dumps(rows["summary"], allow_nan=False)
+    # A table loaded before this fix still holds NaN and infinity: the rows go out as null.
+    old = pa.table({"x": pa.array([1.5, math.nan, math.inf, None], pa.float64()), "y": pa.array([math.nan, 2.0, 3.0, 4.0], pa.float32())})
+    assert _json_rows(old) == [{"x": 1.5, "y": None}, {"x": None, "y": 2.0}, {"x": None, "y": 3.0}, {"x": None, "y": 4.0}]
