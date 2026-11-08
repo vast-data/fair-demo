@@ -322,6 +322,10 @@ main[hidden] { display: none; }
 .cside .pending:not(:empty) { padding: 0 12px 8px; }
 .cside .list { border-top: 1px solid var(--line); }
 .item .m .dot { margin-right: 1px; } .item .m.warn { color: var(--warn); }
+/* A status line wraps as one piece beside its dot, which stays level with the first line. */
+.item .m.status { flex-wrap: nowrap; align-items: flex-start; }
+.item .m.status .dot { margin-top: calc(0.5lh - 3.5px); }
+.item .m.status .mt { min-width: 0; }
 .cfoot { padding: 10px 14px 12px; border-top: 1px solid var(--line); font-size: 12px; color: var(--muted); line-height: 1.5; }
 .cfoot a { color: var(--accent); cursor: pointer; text-decoration: none; } .cfoot a:hover { text-decoration: underline; }
 .cfoot .pipe { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; }
@@ -1189,7 +1193,7 @@ function renderList() {
   $("#list").innerHTML = rows.map(r => { const [cls, line] = statusLine(r); return `
     <div class="item ${current && current.folder === r.folder ? "sel" : ""}" data-f="${esc(r.folder)}">
       <div class="t">${esc(r.title || r.name)}</div>
-      <div class="m ${cls}"><span class="dot ${cls === "warn" ? "s-human" : cls === "good" ? "s-good" : cls === "bad" ? "s-bad" : "s-header"}"></span>${line}</div>
+      <div class="m status ${cls}"><span class="dot ${cls === "warn" ? "s-human" : cls === "good" ? "s-good" : cls === "bad" ? "s-bad" : "s-header"}"></span><span class="mt">${line}</span></div>
     </div>`; }).join("") || `<div class="empty">${q || cfilter ? "Nothing matches." : "No datasets yet. Add one, or review the backlog."}</div>`;
   document.querySelectorAll(".item").forEach(el => el.onclick = () => open(el.dataset.f));
 }
