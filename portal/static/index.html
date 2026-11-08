@@ -1277,7 +1277,7 @@ function renderDetail(r, score) {
     <div class="where">${esc(r.folder)} · ${r.files.length} file${r.files.length === 1 ? "" : "s"} · ${fmtBytes(size)}${published
       ? ` · published as <code>${esc(r.pid)}</code> · <a href="/id/${esc(r.pid)}" target="_blank">Landing page</a> · <a href="/id/${esc(r.pid)}/ro-crate-metadata.json" target="_blank">RO-Crate</a> · <a href="/id/${esc(r.pid)}/croissant.json" target="_blank">Croissant</a>`
       : ` · curated ${esc((r.generated || "").slice(0, 16).replace("T", " "))}`}</div>
-    <div class="fairstrip"><div><div class="lbl">FAIR score</div><div class="bigs">${r.score_before ?? "–"}<i>→</i><b id="s-after">${r.score_after ?? "…"}</b><span class="sub">${published ? "published" : "on publish"}</span></div></div>
+    <div class="fairstrip"><div><div class="lbl">FAIR score</div><div class="bigs">${r.score_before ?? "–"}<i>→</i><b id="s-after">${r.score_after ?? "…"}</b><span class="sub"${published ? "" : ` title="The score this record gets if it is published with the decisions made so far"`}>${published ? "published" : "if published now"}</span></div></div>
       <div class="bars" id="fair">${fairBars(score)}</div></div>
     <div id="call"></div>
     ${r.duplicates ? `<div class="callout">The same files are also in <b>${esc(r.duplicates.join(", "))}</b>: check it isn't a copy before publishing again.</div>` : ""}
