@@ -208,6 +208,14 @@ def test_publish_loads_the_data_as_a_queryable_table(fn, tmp_path):
     fn.handler(ctx, event("fair-raw", "climate/sst/_fair/review.json"))
     assert fn.table_sink._path("climate_sst").stat().st_mtime_ns == before
 
+    # And again: finished loads don't count towards the guard against loads that stop the function.
+    for who in ("cy", "di"):
+        fn._clients["s3"].put_object(Bucket="fair-raw", Key="climate/sst/_fair/review.json",
+                                     Body=json.dumps({"reviewer": who, "decisions": {}}))
+        fn.handler(ctx, event("fair-raw", "climate/sst/_fair/review.json"))
+        rec = json.loads(fn._clients["s3"].objects[("fair-raw", "climate/sst/_fair/record.json")])
+        assert rec["tables_status"] == "loaded" and len(rec["tables"]) == 1 and "tables_attempts" not in rec
+
 
 def test_a_curator_can_publish_as_files_only(fn, tmp_path):
     """The review's "tables": false publishes the dataset without loading its data into VAST DataBase; the
