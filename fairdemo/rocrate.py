@@ -22,6 +22,10 @@ from .curate import accepted
 TEST_ARK_SHOULDER = "ark:/99999/fk4"
 # The repository that publishes the datasets: their publisher when the data names none (as DataCite does).
 PUBLISHER = os.environ.get("FAIR_PUBLISHER", "FAIR demo repository on the VAST Data Platform")
+# Where this site keeps files and tables, as its published records say. A site that isn't on VAST (Site B in the
+# catalog-of-catalogs demo runs in local mode) names its own.
+DATASTORE = os.environ.get("FAIR_DATASTORE", "the VAST DataStore")
+TABLE_HOME = os.environ.get("FAIR_TABLE_HOME", "VAST DataBase")
 OPEN = {"CC0-1.0", "CC-BY-4.0", "CC-BY-3.0", "OGL-UK-3.0", "ODC-By-1.0", "PDDL-1.0", "CC-BY-SA-4.0"}
 
 # Publishing needs these accepted (RO-Crate itself requires a licence); without them a person must act first.
@@ -154,7 +158,7 @@ def build(record: dict, base_url: str, s3_prefix: str) -> dict:
          "conformsTo": {"@id": "https://w3id.org/ro/crate/1.1"}, "about": {"@id": "./"}},
         root,
         {"@id": "#s3", "@type": "DataDownload", "contentUrl": s3_prefix.rstrip("/") + "/",
-         "encodingFormat": a.get("encodingFormat"), "description": "S3 prefix on the VAST DataStore"},
+         "encodingFormat": a.get("encodingFormat"), "description": "S3 prefix on %s" % DATASTORE},
         *people,
         *var_entities,
     ]
@@ -174,9 +178,9 @@ def build(record: dict, base_url: str, s3_prefix: str) -> dict:
         graph.append({"@id": tid, "@type": "DataDownload", "name": "Table %s" % t["location"],
                       "contentUrl": "%s/tables/%s?format=csv" % (landing, t["table"]), "encodingFormat": "text/csv",
                       "contentSize": "%d rows" % t["rows"], "isBasedOn": {"@id": t["source"]},
-                      "description": "%s as a VAST DataBase table (%d rows, %d columns). Query it in place: "
+                      "description": "%s as a %s table (%d rows, %d columns). Query it in place: "
                                      "?columns=a,b&where=a>=1&limit=100&format=csv|json|parquet"
-                                     % (t["source"], t["rows"], len(t["columns"]))})
+                                     % (t["source"], TABLE_HOME, t["rows"], len(t["columns"]))})
     snap = record.get("snapshot")
     if snap:
         # The published bytes, preserved: a VAST snapshot of the folder taken at publication.
@@ -273,9 +277,9 @@ def _preview(root, people, record, crate) -> str:
         if snap else ""
     tables = "".join(_table_html(root["url"], t) for t in record.get("tables") or [])
     if tables:
-        tables = ("<h2>Query it in place</h2><p>The data is also in VAST DataBase, one table per part, so it can be "
+        tables = ("<h2>Query it in place</h2><p>The data is also in %s, one table per part, so it can be "
                   "read without downloading the files: choose columns, filter rows, and get CSV, JSON or Parquet. "
-                  "Units and meanings are the reviewed ones.</p>" + tables)
+                  "Units and meanings are the reviewed ones.</p>" % e(TABLE_HOME)) + tables
     lic = root.get("license", {}).get("@id", "")
     return f"""<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">

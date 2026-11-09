@@ -113,6 +113,12 @@ EMBED_MODEL = need("FAIR_EMBED_MODEL")          # 1024 dimensions: fairdemo/cata
 HTTPS_PROXY = C("HTTPS_PROXY", "")              # empty: the cluster reaches the model gateway directly
 LANDING_BASE_URL = C("LANDING_BASE_URL")
 PORTAL_REPO, PORTAL_NODE_PORT = C("REGISTRY_PREFIX", TENANT) + "/fair-portal", int(ENV.get("FAIR_PORTAL_NODE_PORT", "30080"))
+# "Site B (demo)", the second site of the catalog-of-catalogs demo: its own namespace and NodePort, landing pages
+# on the same host as this portal's unless CLUSTER_SITE_B_LANDING_BASE_URL says otherwise.
+SITE_B_REPO, SITE_B_NODE_PORT = C("REGISTRY_PREFIX", TENANT) + "/fair-portal-site-b", int(ENV.get("FAIR_SITE_B_NODE_PORT", "30081"))
+_landing = __import__("urllib.parse").parse.urlsplit(LANDING_BASE_URL)
+SITE_B_LANDING_BASE_URL = C("SITE_B_LANDING_BASE_URL", f"{_landing.scheme}://{_landing.hostname}:{SITE_B_NODE_PORT}{_landing.path}")
+SITE_B_OAI = "http://portal-b.fair-portal-b.svc.cluster.local:8080/oai"
 
 
 # ---------------------------------------------------------------- helpers
@@ -607,21 +613,43 @@ def step_pipeline():
     log(f"pipeline {PIPELINE}: {s['status']} ({p['guid']}, revision {s.get('last_revision_number')}, function revision {rev})")
 
 
+def _push_image(dockerfile: Path, repo: str, tag: str, oci_name: str) -> str:
+    oci = HERE / "build" / oci_name
+    oci.parent.mkdir(parents=True, exist_ok=True)
+    run("docker", "buildx", "build", "--platform", "linux/amd64", "--provenance=false", "-f", str(dockerfile),
+        "--output", f"type=oci,dest={oci}", str(ROOT))
+    run("skopeo", "copy", "--dest-tls-verify=true", f"oci-archive:{oci}", f"docker://{REGISTRY_PUSH}/{repo}:{tag}")
+    r = requests.head(f"https://{REGISTRY_PUSH}/v2/{repo}/manifests/{tag}", timeout=10, headers={
+        "Accept": "application/vnd.oci.image.manifest.v1+json, application/vnd.docker.distribution.manifest.v2+json"})
+    r.raise_for_status()
+    return f"{REGISTRY_PUSH}/{repo}:{tag}@{r.headers['Docker-Content-Digest']}"
+
+
+def step_site_b():
+    """"Site B (demo)": a second, self-contained portal (local mode, its own namespace) whose datasets this
+    portal harvests over OAI-PMH, for the catalog-of-catalogs demo. Its datasets come from
+    scripts/site_b_data.py, derived from data/raw. Run step_portal afterwards so this portal lists it as a peer."""
+    run(sys.executable, str(ROOT / "scripts/site_b_data.py"), str(HERE / "build/site-b"))
+    files = sorted([*(ROOT / "fairdemo").glob("*.py"), *(ROOT / "portal").rglob("*.py"), ROOT / "function/main.py",
+                    ROOT / "portal/static/index.html", ROOT / "portal/Dockerfile.site", ROOT / "pyproject.toml",
+                    *(p for p in (HERE / "build/site-b").rglob("*") if p.is_file())])
+    tag = "v-" + __import__("hashlib").sha256(b"".join(f.read_bytes() for f in files)).hexdigest()[:10]
+    image = _push_image(ROOT / "portal/Dockerfile.site", SITE_B_REPO, tag, "fair-portal-site-b.oci.tar")
+    manifest = (HERE / "site-b.yaml").read_text()
+    for k, v in {"IMAGE": image, "LANDING_BASE_URL": SITE_B_LANDING_BASE_URL, "NODE_PORT": str(SITE_B_NODE_PORT)}.items():
+        manifest = manifest.replace("${%s}" % k, v)
+    _kubectl("apply", "-f", "-", input=manifest.encode())
+    _kubectl("-n", "fair-portal-b", "rollout", "status", "deploy/portal-b", "--timeout=300s")
+    save_state(site_b={"image": image, "oai": SITE_B_OAI, "landing": SITE_B_LANDING_BASE_URL})
+    log(f"Site B (demo) on {EXTERNAL_K8S['api'].split('//')[1].split(':')[0]}:{SITE_B_NODE_PORT}; landing pages under {SITE_B_LANDING_BASE_URL}")
+
+
 def step_portal_image():
     tag = "v-" + __import__("hashlib").sha256(b"".join(
         f.read_bytes() for f in sorted([*(ROOT / "fairdemo").glob("*.py"), *(ROOT / "portal").rglob("*.py"),
                                         ROOT / "portal/static/index.html", ROOT / "portal/Dockerfile",
                                         ROOT / "pyproject.toml"]))).hexdigest()[:10]
-    oci = HERE / "build" / "fair-portal.oci.tar"
-    oci.parent.mkdir(parents=True, exist_ok=True)
-    run("docker", "buildx", "build", "--platform", "linux/amd64", "--provenance=false", "-f", str(ROOT / "portal/Dockerfile"),
-        "--output", f"type=oci,dest={oci}", str(ROOT))
-    run("skopeo", "copy", "--dest-tls-verify=true", f"oci-archive:{oci}",
-        f"docker://{REGISTRY_PUSH}/{PORTAL_REPO}:{tag}")
-    r = requests.head(f"https://{REGISTRY_PUSH}/v2/{PORTAL_REPO}/manifests/{tag}", timeout=10, headers={
-        "Accept": "application/vnd.oci.image.manifest.v1+json, application/vnd.docker.distribution.manifest.v2+json"})
-    r.raise_for_status()
-    save_state(portal_image=f"{REGISTRY_PUSH}/{PORTAL_REPO}:{tag}@{r.headers['Docker-Content-Digest']}")
+    save_state(portal_image=_push_image(ROOT / "portal/Dockerfile", PORTAL_REPO, tag, "fair-portal.oci.tar"))
     log(f"portal image pushed: {load_state()['portal_image']}")
 
 
@@ -639,7 +667,9 @@ def step_portal():
     for k, v in {"IMAGE": st["portal_image"], "S3_ENDPOINT": S3_ENDPOINT, "PROTOCOLS_VIP": PROTOCOLS_VIP,
                  "VIP_NAME": "ipv4-" + PROTOCOLS_VIP.replace(".", "-"), "LITELLM_BASE_URL": LITELLM_BASE_URL,
                  "CHAT_MODEL": CHAT_MODEL, "EMBED_MODEL": EMBED_MODEL, "HTTPS_PROXY": HTTPS_PROXY,
-                 "VMS_URL": VMS, "VMS_HOST": VMS_HOST, "VMS_TENANT": TENANT, "VMS_USER": TENANT_ADMIN}.items():
+                 "VMS_URL": VMS, "VMS_HOST": VMS_HOST, "VMS_TENANT": TENANT, "VMS_USER": TENANT_ADMIN,
+                 # partner repositories to harvest: Site B (demo), once step_site_b has deployed it
+                 "PEERS": json.dumps([{"name": "Site B (demo)", "oai": st["site_b"]["oai"]}]) if st.get("site_b") else ""}.items():
         manifest = manifest.replace("${%s}" % k, v)
     ns, rest = manifest.split("\n---\n", 1)
     for doc in (ns, secret, rest):  # the namespace first, then the secret it holds, then the workload
@@ -651,7 +681,7 @@ def step_portal():
 
 STEPS = [step_tenant, step_vippools, step_admin, step_s3_identity, step_s3_policy, step_views, step_topics,
          step_dataengine, step_k8s_link, step_wheels, step_image, step_container_registry,
-         step_secret, step_trigger, step_function, step_pipeline, step_portal_image, step_portal]
+         step_secret, step_trigger, step_function, step_pipeline, step_site_b, step_portal_image, step_portal]
 
 
 # ---------------------------------------------------------------- status / down
@@ -722,7 +752,7 @@ def cmd_down():
             tryit(f"{path}{name}", lambda o=o, path=path: vms("DELETE", f"{path}{o['id']}/"))
     if tid:
         tryit(f"tenant {TENANT}", lambda: vms("DELETE", f"tenants/{tid}/"))
-    for ns in ("fair-portal", EXTERNAL_K8S["namespace"]):
+    for ns in ("fair-portal", "fair-portal-b", EXTERNAL_K8S["namespace"]):
         tryit(f"namespace {ns}", lambda ns=ns: _kubectl("delete", "namespace", ns, "--ignore-not-found"))
     STATE.unlink(missing_ok=True)
 

@@ -25,6 +25,7 @@ researcher / HPC job ──S3 or NFSv4──▶ s3://fair-raw/<domain>/<dataset>
 portal ── reads _fair/record.json, writes _fair/review.json, searches by meaning and by variable,
           queries the tables, lists the backlog from VAST Catalog, resolves /id/<ark>,
           and serves every published record for harvesting: /harvest/dcat (DCAT-AP 3), /oai (OAI-PMH 2.0)
+          and harvests partner repositories over OAI-PMH (FAIR_PEERS), so search ranks every site together
 ```
 
 ## What makes it credible
@@ -202,6 +203,21 @@ published and nothing still under review.
   verbs, date ranges and the protocol's errors; identifiers are the datasets' ARKs. The catalogue is small,
   so lists come whole (no resumption tokens), and there are no sets. Responses validate against the
   official OAI-PMH and oai_dc schemas.
+
+### A catalog of catalogs
+
+The portal also harvests its partner repositories, so one search finds datasets across sites. List them in
+`FAIR_PEERS` (JSON: `[{"name": "Site B (demo)", "oai": "http://.../oai"}]`); any repository that speaks OAI-PMH
+with Dublin Core can be one, as university repositories do. Every `FAIR_HARVEST_MINUTES` (default 10) the
+portal harvests each partner, keeps the records in VAST DB (`fair.remote`) and embeds them into `fair.search`
+with the same model as its own, under the folder `@<site>/<identifier>`. *Find data* then ranks every site's
+datasets together, tags each with its site, and opens a partner's dataset at the site that holds its data.
+
+For the demo, `./deploy/de.py up site_b` deploys **Site B (demo)**: a second, fictional university repository,
+a self-contained copy of this portal (local mode, namespace `fair-portal-b`, NodePort 30081). At start it
+publishes three datasets through its own pipeline and review (`portal/seed.py`), each a subset derived from the
+open data in `data/raw` (`scripts/site_b_data.py`) and credited to its source. Redeploy this portal afterwards
+(`up portal portal_image`) and it lists Site B in `FAIR_PEERS`.
 
 ## Preservation and download
 
