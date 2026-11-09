@@ -23,7 +23,8 @@ researcher / HPC job ──S3 or NFSv4──▶ s3://fair-raw/<domain>/<dataset>
                           ro-crate-metadata.json, croissant.json, landing page, identifier, FAIR score;
                           indexed in fair-db/fair/search (vectors) and fair/variables
 portal ── reads _fair/record.json, writes _fair/review.json, searches by meaning and by variable,
-          queries the tables, lists the backlog from VAST Catalog, resolves /id/<ark>
+          queries the tables, lists the backlog from VAST Catalog, resolves /id/<ark>,
+          and serves every published record for harvesting: /harvest/dcat (DCAT-AP 3), /oai (OAI-PMH 2.0)
 ```
 
 ## What makes it credible
@@ -187,6 +188,20 @@ FAIR record, with size, formats, any README/CITATION/LICENSE, and age:
 `s3://fair-estate` is the demo estate, a view shared over **S3 and NFS**. Its triggers fire only for
 `_READY` and `review.json`, so data written there is left alone until someone asks.
 `scripts/seed_estate.py` fills it with the demo data under project, scratch and instrument paths.
+
+## Harvesting
+
+Other catalogs can pull every published record in the two open standards research catalogs collect from.
+Both are built from each dataset's published `ro-crate-metadata.json`, so a harvester sees exactly what was
+published and nothing still under review.
+
+- **DCAT-AP 3** at `/harvest/dcat`: one JSON-LD catalogue, as national and EU data portals harvest. Each
+  dataset lists its files (with SHA-256), its data tables and its RO-Crate and Croissant documents as
+  distributions. It conforms to the official DCAT-AP 3.0 SHACL shapes.
+- **OAI-PMH 2.0** at `/oai`, with Dublin Core (`oai_dc`), as repositories and aggregators harvest. All six
+  verbs, date ranges and the protocol's errors; identifiers are the datasets' ARKs. The catalogue is small,
+  so lists come whole (no resumption tokens), and there are no sets. Responses validate against the
+  official OAI-PMH and oai_dc schemas.
 
 ## Preservation and download
 
