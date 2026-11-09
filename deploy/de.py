@@ -629,7 +629,8 @@ def step_site_b():
     """"Site B (demo)": a second, self-contained portal (local mode, its own namespace) whose datasets this
     portal harvests over OAI-PMH, for the catalog-of-catalogs demo. Its datasets come from
     scripts/site_b_data.py, derived from data/raw. Run step_portal afterwards so this portal lists it as a peer."""
-    run(sys.executable, str(ROOT / "scripts/site_b_data.py"), str(HERE / "build/site-b"))
+    # In the project's environment (numpy, netCDF4, astropy), not this script's own minimal one.
+    run("uv", "run", "--project", str(ROOT), "python", str(ROOT / "scripts/site_b_data.py"), str(HERE / "build/site-b"))
     files = sorted([*(ROOT / "fairdemo").glob("*.py"), *(ROOT / "portal").rglob("*.py"), ROOT / "function/main.py",
                     ROOT / "portal/static/index.html", ROOT / "portal/Dockerfile.site", ROOT / "pyproject.toml",
                     *(p for p in (HERE / "build/site-b").rglob("*") if p.is_file())])
