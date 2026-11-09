@@ -9,8 +9,11 @@ from __future__ import annotations
 
 import copy
 import json
+import datetime as dt
 import math
 import os
+import threading
+import time
 from pathlib import Path
 
 from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
@@ -23,10 +26,19 @@ for line in (ROOT / ".env").read_text().splitlines() if (ROOT / ".env").exists()
     if sep and not k.startswith("#"):
         os.environ.setdefault(k.strip(), v.split(" #", 1)[0].strip())
 
-from fairdemo import catalog, curate, fairscore, harvest, llm, nlquery, rocrate, sweep, tables  # noqa: E402
+from fairdemo import catalog, curate, fairscore, federation, harvest, llm, nlquery, rocrate, sweep, tables  # noqa: E402
 from portal import store as stores  # noqa: E402
 
-app = FastAPI(title="FAIR portal")
+from contextlib import asynccontextmanager  # noqa: E402
+
+
+@asynccontextmanager
+async def _lifespan(_app):
+    _start_background()   # Site B's seed, and harvesting partners (below)
+    yield
+
+
+app = FastAPI(title="FAIR portal", lifespan=_lifespan)
 store = stores.from_env()
 
 
@@ -56,9 +68,14 @@ def index():
     return (ROOT / "portal/static/index.html").read_text()
 
 
+# This portal's name among its partners (shown in the header when set), e.g. "Site B (demo)".
+SITE_NAME = os.environ.get("FAIR_SITE_NAME", "").strip()
+
+
 @app.get("/api/info")
 def info():
-    return {"mode": store.mode, "model": llm.CHAT_MODEL or "(not set)",
+    return {"mode": store.mode, "model": llm.CHAT_MODEL or "(not set)", "site": SITE_NAME or None,
+            "peers": [p["name"] for p in federation.peers()],
             "search": store.db is not None or store.mode == "local", "in_cluster": store.db is not None,
             "embed_model": llm.EMBED_MODEL or "(not set)", "embed_dims": catalog.DIM,
             "embed_max_chars": catalog.MAX_TEXT}
@@ -239,6 +256,11 @@ def _keyword_search(q: str, limit: int) -> list[dict]:
     """Published datasets containing the query's words, the most words matched first."""
     words = [w for w in q.lower().split() if len(w) > 1]
     out = []
+    for r in _remote_records():
+        hit = sum(w in federation.document_text(r).lower() for w in words) / max(len(words), 1)
+        if hit:
+            out.append({k: r[k] for k in ("folder", "pid", "title", "description")} |
+                       {"domain": None, "keywords": ", ".join(r["keywords"]), "similarity": round(hit, 3)})
     for r in _published():
         text = catalog.document_text(r).lower()
         hit = sum(w in text for w in words) / max(len(words), 1)
@@ -266,6 +288,13 @@ def _search_by_meaning(q: str, limit: int) -> dict:
         sim = sum(a * b for a, b in zip(qv, cached[1]))
         out.append({k: s[k] for k in ("folder", "pid", "title", "domain", "description")} |
                    {"keywords": ", ".join(s["keywords"]), "similarity": round(sim, 3)})
+    for r in _remote_records():   # partners' records, embedded with the same model, so they rank together
+        cached = _local_vectors.get(r["folder"])
+        if not cached or cached[0] != r["datestamp"]:
+            _local_vectors[r["folder"]] = cached = (r["datestamp"], catalog.embed(federation.document_text(r)))
+        out.append({k: r[k] for k in ("folder", "pid", "title", "description")} |
+                   {"domain": None, "keywords": ", ".join(r["keywords"]),
+                    "similarity": round(sum(a * b for a, b in zip(qv, cached[1])), 3)})
     return {"results": catalog.rank(q, out)[:limit], "engine": "in-memory (local mode)"}
 
 
@@ -282,7 +311,16 @@ def facts(r: dict) -> dict:
             "formats": sorted({f["format"] for f in r["files"]}), "files": len(r["files"]),
             "bytes": sum(f["size"] for f in r["files"]), "tables": len(tabs), "rows": sum(t["rows"] for t in tabs),
             "score": r.get("score_after"), "published": r.get("published"), "landing_page": r.get("landing_page"),
-            "temporal": a.get("temporalCoverage"), "spatial": a.get("spatialCoverage")}
+            "temporal": a.get("temporalCoverage"), "spatial": a.get("spatialCoverage"), "site": None}
+
+
+def remote_facts(r: dict) -> dict:
+    """A partner's dataset, as harvested: the same shape as facts(), with the site that holds it."""
+    return {"folder": r["folder"], "pid": r["pid"], "title": r["title"], "description": (r["description"] or "")[:600],
+            "domain": None, "keywords": r["keywords"], "licence": r["licence"], "creators": r["creators"],
+            "formats": r["formats"], "files": None, "bytes": 0, "tables": 0, "rows": 0, "score": None,
+            "published": r.get("date"), "landing_page": r["landing_page"], "temporal": None, "spatial": None,
+            "site": r["site"]}
 
 
 def _facets(rows: list[dict]) -> dict:
@@ -290,15 +328,18 @@ def _facets(rows: list[dict]) -> dict:
     return {"domain": Counter(x["domain"] for x in rows if x["domain"]).most_common(),
             "format": Counter(f for x in rows for f in x["formats"]).most_common(),
             "licence": Counter(x["licence"] for x in rows if x["licence"]).most_common(),
-            "queryable": sum(1 for x in rows if x["tables"])}
+            "queryable": sum(1 for x in rows if x["tables"]),
+            "site": ([("here", sum(1 for x in rows if not x["site"]))] + Counter(x["site"] for x in rows if x["site"]).most_common())
+                    if any(x["site"] for x in rows) else []}
 
 
 @app.get("/api/find")
-def find(q: str = "", domain: str = "", format: str = "", licence: str = "", queryable: bool = False):
+def find(q: str = "", domain: str = "", format: str = "", licence: str = "", queryable: bool = False, site: str = ""):
     """Published datasets for people looking for data: by meaning (the stored embeddings) and by variable
     (names, CF standard names, units, descriptions), narrowed by domain, format, licence and whether the
     data can be queried in place. Without a query, all of them, by title."""
     rows = {x["folder"]: x for x in (facts(r) for r in _published())}
+    rows |= {r["folder"]: remote_facts(r) for r in _remote_records()}   # partners' datasets, harvested
     facets = _facets(list(rows.values()))
     engine, q = None, q.strip()
     if q:
@@ -324,7 +365,8 @@ def find(q: str = "", domain: str = "", format: str = "", licence: str = "", que
     else:
         hits = sorted(rows.values(), key=lambda x: x["title"].lower())
     hits = [x for x in hits if (not domain or x["domain"] == domain) and (not format or format in x["formats"])
-            and (not licence or x["licence"] == licence) and (not queryable or x["tables"])]
+            and (not licence or x["licence"] == licence) and (not queryable or x["tables"])
+            and (not site or (x["site"] or "here") == site)]
     return {"results": hits, "facets": facets, "engine": engine, "total": len(rows)}
 
 
@@ -620,6 +662,91 @@ def download(pid: str, fname: str):
             "Content-Length": str(f["size"]), "Content-Disposition": f'attachment; filename="{fname}"',
             "Digest": f"sha-256={digest}", "Link": f'<{r.get("landing_page", "")}>; rel="cite-as"'})
     raise HTTPException(404, f"unknown identifier {pid}")
+
+
+# ---------------------------------------------------------------- catalog of catalogs: partners' datasets, harvested
+
+HARVEST_MINUTES = float(os.environ.get("FAIR_HARVEST_MINUTES", "10"))
+_peer_status: dict[str, dict] = {}
+_local_remote: dict[str, dict] = {}            # local mode: folder -> harvested record
+_remote_cache = {"t": 0.0, "rows": []}         # cluster: fair.remote, re-read at most every 30 s
+
+
+def _remote_records() -> list[dict]:
+    """Every partner dataset this portal has harvested."""
+    if store.db is not None:
+        if time.time() - _remote_cache["t"] > 30:
+            try:
+                _remote_cache["rows"] = federation.load(store.db, DB_BUCKET, DB_SCHEMA)
+            except Exception:  # noqa: BLE001 - keep what was read last
+                pass
+            _remote_cache["t"] = time.time()
+        return _remote_cache["rows"]
+    return list(_local_remote.values())
+
+
+def harvest_peers() -> list[dict]:
+    """Harvest every partner in FAIR_PEERS now: their records into VAST DB, embedded into fair.search."""
+    out = []
+    for p in federation.peers():
+        st = {"name": p["name"], "oai": p["oai"], "harvested_at": dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds")}
+        try:
+            recs = federation.harvest(p)
+            if store.db is not None:
+                st |= federation.sync(store.db, DB_BUCKET, DB_SCHEMA, p["name"], recs, catalog.embed)
+                _remote_cache["t"] = 0.0
+            else:
+                for f in [f for f, r in _local_remote.items() if r["site"] == p["name"]]:
+                    del _local_remote[f]
+                _local_remote.update({r["folder"]: r for r in recs})
+                st["records"] = len(recs)
+            st["error"] = None
+        except Exception as e:  # noqa: BLE001 - a partner that is down keeps its last harvest
+            st["error"] = str(e)[:300]
+        _peer_status[p["name"]] = {**_peer_status.get(p["name"], {}), **st}
+        out.append(_peer_status[p["name"]])
+    return out
+
+
+@app.get("/api/peers")
+def peers_status():
+    return {"site": SITE_NAME or None, "every_minutes": HARVEST_MINUTES,
+            "peers": [_peer_status.get(p["name"], {"name": p["name"], "oai": p["oai"]}) for p in federation.peers()],
+            "harvested": len(_remote_records())}
+
+
+@app.post("/api/peers/harvest")
+def peers_harvest():
+    return {"peers": harvest_peers()}
+
+
+@app.get("/api/remote/{folder:path}")
+def remote(folder: str):
+    r = next((x for x in _remote_records() if x["folder"] == folder), None)
+    if not r:
+        raise HTTPException(404, f"no harvested record {folder}")
+    return {"record": r, "facts": remote_facts(r), "peer": _peer_status.get(r["site"])}
+
+
+def _every(minutes: float, fn):
+    def loop():
+        time.sleep(5)
+        while True:
+            try:
+                fn()
+            except Exception:  # noqa: BLE001
+                pass
+            time.sleep(max(minutes, 0.5) * 60)
+    threading.Thread(target=loop, daemon=True).start()
+
+
+def _start_background():
+    # Site B (demo) and other local-mode sites publish their seed datasets through their own pipeline.
+    if os.environ.get("FAIR_SITE_SEED") and store.mode == "local":
+        from portal import seed
+        threading.Thread(target=seed.seed, args=(store, Path(os.environ["FAIR_SITE_SEED"])), daemon=True).start()
+    if federation.peers():
+        _every(HARVEST_MINUTES, harvest_peers)
 
 
 def _harvest_entries() -> list[dict]:

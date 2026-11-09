@@ -1,0 +1,65 @@
+# "Site B (demo)": a second, fictional university repository for the catalog-of-catalogs demo. Applied by
+# ./deploy/de.py up site_b, which fills in ${IMAGE}, ${LANDING_BASE_URL} and ${NODE_PORT}.
+# It is self-contained: local mode, on the pod's own disk, with no VAST buckets, tables or secrets of its own.
+# At start it publishes its seed datasets through its own pipeline and review; the main portal harvests it over
+# OAI-PMH (FAIR_PEERS) at http://portal-b.fair-portal-b.svc.cluster.local:8080/oai.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: fair-portal-b
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: portal-b
+  namespace: fair-portal-b
+spec:
+  replicas: 1
+  selector:
+    matchLabels: {app: fair-portal-b}
+  template:
+    metadata:
+      labels: {app: fair-portal-b}
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        seccompProfile: {type: RuntimeDefault}
+      containers:
+        - name: portal
+          image: ${IMAGE}
+          ports: [{containerPort: 8080}]
+          env:
+            - {name: FAIR_STORE, value: local}
+            - {name: FAIR_LOCAL_ROOT, value: /data/buckets}
+            - {name: FAIR_SITE_SEED, value: /app/site-seed}
+            - {name: FAIR_SITE_NAME, value: "Site B (demo)"}
+            - {name: FAIR_PUBLISHER, value: "Site B (demo) university data repository"}
+            - {name: LANDING_BASE_URL, value: "${LANDING_BASE_URL}"}
+            # Site B isn't on VAST: its published records name its own storage
+            - {name: FAIR_DATASTORE, value: "this repository's storage"}
+            - {name: FAIR_TABLE_HOME, value: "this repository's database"}
+          volumeMounts: [{name: data, mountPath: /data}]
+          readinessProbe:
+            httpGet: {path: /api/info, port: 8080}
+            periodSeconds: 5
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities: {drop: ["ALL"]}
+          resources:
+            requests: {cpu: 100m, memory: 256Mi}
+            limits: {memory: 1Gi}
+      volumes:
+        - {name: data, emptyDir: {}}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: portal-b
+  namespace: fair-portal-b
+spec:
+  type: NodePort
+  selector: {app: fair-portal-b}
+  ports:
+    - {port: 8080, targetPort: 8080, nodePort: ${NODE_PORT}}

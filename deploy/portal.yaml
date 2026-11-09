@@ -42,6 +42,8 @@ spec:
             - {name: LITELLM_BASE_URL, value: "${LITELLM_BASE_URL}"}
             - {name: FAIR_CHAT_MODEL, value: "${CHAT_MODEL}"}
             - {name: FAIR_EMBED_MODEL, value: "${EMBED_MODEL}"}
+            # partner repositories to harvest over OAI-PMH (the catalog of catalogs), as JSON; empty for none
+            - {name: FAIR_PEERS, value: '${PEERS}'}
             - {name: HTTPS_PROXY, value: "${HTTPS_PROXY}"}
             - {name: NO_PROXY, value: "${PROTOCOLS_VIP},${VIP_NAME},${VMS_HOST},localhost,127.0.0.1,.svc,.cluster.local"}
             # VAST Catalog, for the backlog: queried through VMS as the tenant's admin (scoped to the tenant)

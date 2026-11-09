@@ -1,0 +1,17 @@
+# "Site B (demo)": a second, self-contained copy of the portal for the catalog-of-catalogs demo (deploy/de.py up site_b).
+# It runs in local mode: the same function code, in-process, over buckets on the pod's own disk, seeded at start
+# with the datasets from scripts/site_b_data.py (in deploy/build/site-b). Build context: the repo root.
+FROM python:3.12-slim
+WORKDIR /app
+COPY pyproject.toml README.md ./
+COPY fairdemo ./fairdemo
+COPY portal ./portal
+COPY function ./function
+RUN pip install --no-cache-dir ".[portal]" "vastdb[adbc]>=2.1" \
+    && rm -rf /root/.cache
+COPY deploy/build/site-b ./site-seed
+RUN chown -R 1000:1000 /app
+ENV HOME=/app
+USER 1000
+EXPOSE 8080
+CMD ["uvicorn", "portal.app:app", "--host", "0.0.0.0", "--port", "8080"]

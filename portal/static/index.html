@@ -375,6 +375,16 @@ main.find .side { position: static; height: auto; } main.find .side > .panel.gro
 .fitem .m { color: var(--muted); font-size: 12px; margin-top: 3px; }
 .fitem .hit { font-size: 12px; margin-top: 3px; color: var(--accent); }
 .fitem.weak { opacity: .7; }
+/* A partner's dataset, harvested: the site that holds it, as a quiet tag (not the highlighted element) */
+.sitetag { display: inline-block; padding: 0 7px; margin-right: 2px; border: 1px solid var(--line); border-radius: 999px;
+  font-size: 11.5px; line-height: 18px; color: var(--ink); background: var(--panel); white-space: nowrap; }
+.dpage .elsewhere { margin: 16px 0 18px; padding: 14px 16px; border: 1px solid color-mix(in srgb, var(--accent) 30%, var(--line));
+  border-radius: var(--r); background: color-mix(in srgb, var(--accent) 4%, var(--panel)); }
+.dpage .elsewhere h3 { font-size: 14px; margin: 0 0 6px; } .dpage .elsewhere p { margin: 0 0 12px; font-size: 13px; line-height: 1.5; }
+.dpage .elsewhere a.primary { display: inline-flex; align-items: center; height: 34px; padding: 0 14px; border-radius: 8px; text-decoration: none;
+  background: var(--accent); color: var(--accent-ink); font-weight: 600; font-size: 13px; }
+.dpage .elsewhere a.primary:hover { filter: brightness(1.07); }
+header .sitename { font-size: 12.5px; color: var(--muted); white-space: nowrap; }
 /* A dataset page: title and description, then the Ask card as the one highlighted thing, then tabs for the rest */
 .dpage { padding: 20px 24px 24px; }
 .dpage h2 { font-size: 19px; line-height: 1.3; margin: 0 0 4px; letter-spacing: -.01em; }
@@ -604,7 +614,7 @@ dialog.small .drop { padding:34px 18px; background:var(--soft); border-color:col
 </head>
 <body>
 <header>
-  <div class="brand"><span class="logo" aria-hidden="true">F</span><h1 title="FAIR: findable, accessible, interoperable and reusable · on the VAST Data Platform">FAIR data</h1></div>
+  <div class="brand"><span class="logo" aria-hidden="true">F</span><h1 title="FAIR: findable, accessible, interoperable and reusable · on the VAST Data Platform">FAIR data</h1><span class="sitename" id="sitename" hidden></span></div>
   <nav class="views" aria-label="Views">
     <button data-view="curate">Curate</button>
     <button data-view="find" aria-current="page">Find data</button>
@@ -648,7 +658,7 @@ dialog.small .drop { padding:34px 18px; background:var(--soft); border-color:col
         to approve it. Approving publishes standard, machine-readable metadata next to the data.</p>
       <div class="mode-note" id="arch-mode"></div>
       <div class="arch-wrap">
-      <svg class="arch" viewBox="0 0 1120 836" role="img" aria-label="Architecture. On the left, outside the cluster: a researcher or HPC job, and this portal on Kubernetes, which also searches VAST DB. Inside the VAST cluster: the fair-raw and fair-estate buckets, VAST Catalog, the element trigger and a Kafka topic on the VAST Event Broker, which feed the DataEngine function (profile, curate, publish); below it, what the function writes: a snapshot, VAST DB, the metadata next to the data and the fair-docs bucket; VAST DB holds the published data as tables too, which the portal queries, and Trino, managed by VAST on the CNodes, answers SQL over them. On the right, outside: the LiteLLM model gateway, and, as an option not built, other catalogs that subscribe to this site's publish events on the Event Broker. Below the portal: catalogs that harvest it over DCAT-AP or OAI-PMH.">
+      <svg class="arch" viewBox="0 0 1120 836" role="img" aria-label="Architecture. On the left, outside the cluster: a researcher or HPC job, and this portal on Kubernetes, which also searches VAST DB. Inside the VAST cluster: the fair-raw and fair-estate buckets, VAST Catalog, the element trigger and a Kafka topic on the VAST Event Broker, which feed the DataEngine function (profile, curate, publish); below it, what the function writes: a snapshot, VAST DB, the metadata next to the data and the fair-docs bucket; VAST DB holds the published data as tables too, which the portal queries, and Trino, managed by VAST on the CNodes, answers SQL over them. On the right, outside: the LiteLLM model gateway, and, as an option not built, other catalogs that subscribe to this site's publish events on the Event Broker. Below the portal: partner repositories, which it harvests over OAI-PMH and which harvest it over OAI-PMH or DCAT-AP.">
         <defs>
           <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="ah" d="M0,0 L10,5 L0,10 z"/></marker>
           <marker id="ahy" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="ah you" d="M0,0 L10,5 L0,10 z"/></marker>
@@ -669,7 +679,7 @@ dialog.small .drop { padding:34px 18px; background:var(--soft); border-color:col
         <text class="s" x="36" y="269">the backlog, searches,</text>
         <text class="s" x="36" y="287">queries the data tables,</text>
         <text class="s" x="36" y="305">serves /id/ark:/… pages</text>
-        <text class="s" x="36" y="323">and DCAT, OAI-PMH feeds</text>
+        <text class="s" x="36" y="323">and harvests its partners</text>
         <!-- the VAST cluster -->
         <rect class="zone" x="282" y="30" width="621" height="706" rx="12"/>
         <text class="zl" x="298" y="52">VAST CLUSTER</text>
@@ -785,12 +795,12 @@ dialog.small .drop { padding:34px 18px; background:var(--soft); border-color:col
         <text class="s" x="120" y="644">query: the</text>
         <text class="s" x="120" y="660">data tables,</text>
         <text class="s" x="120" y="676">VAST DB SDK</text>
-        <!-- catalogs that pull: the portal serves the published records as DCAT-AP and OAI-PMH -->
-        <path class="ln" d="M60,345 V752" marker-end="url(#ah)"/>
+        <!-- the catalog of catalogs: partner repositories and this portal harvest each other's published records -->
+        <path class="ln" d="M60,349 V752" marker-end="url(#ah)" marker-start="url(#ah)"/>
         <rect class="box" x="22" y="756" width="180" height="70" rx="8"/>
-        <text class="t" x="36" y="780">Harvesting catalogs</text>
-        <text class="s" x="36" y="800">pull published records</text>
-        <text class="s" x="36" y="818">over DCAT-AP or OAI-PMH</text>
+        <text class="t" x="36" y="780">Partner repositories</text>
+        <text class="s" x="36" y="800">harvest each other over</text>
+        <text class="s" x="36" y="818">OAI-PMH (and DCAT-AP)</text>
         <!-- step numbers, as in the list below -->
         <g><circle class="num" cx="245" cy="74" r="10"/><text class="numt" x="241" y="78">1</text></g>
         <g><circle class="num" cx="512" cy="86" r="10"/><text class="numt" x="508" y="90">2</text></g>
@@ -832,10 +842,14 @@ dialog.small .drop { padding:34px 18px; background:var(--soft); border-color:col
           file in the namespace. <i>Backlog</i> lists folders that hold data but have no FAIR record (dark data), with size,
           formats and any docs. <i>Curate</i> drops a <code>_READY</code> marker, and the same function curates the folder in
           place. The estate bucket <code>fair-estate</code> is shared over S3 and NFS.</li>
-        <li><b>Harvest.</b> Other catalogs can pull every published record in the open standards research catalogs collect
-          from: <b>DCAT-AP 3</b> at <code>/harvest/dcat</code>, as data portals harvest, and <b>OAI-PMH 2.0</b> with Dublin Core at
-          <code>/oai</code>, as repositories and aggregators harvest. Both are built from the published RO-Crate, so a harvester
-          sees exactly what was published.</li>
+        <li><b>Harvest, both ways.</b> Other catalogs can pull every published record in the open standards research catalogs
+          collect from: <b>DCAT-AP 3</b> at <code>/harvest/dcat</code>, as data portals harvest, and <b>OAI-PMH 2.0</b> with Dublin Core
+          at <code>/oai</code>, as repositories and aggregators harvest. Both are built from the published RO-Crate, so a harvester
+          sees exactly what was published. In turn this portal harvests its <b>partner repositories</b> over OAI-PMH every few
+          minutes (the catalog of catalogs): their records go into VAST DB (<code>fair.remote</code>) and are embedded into
+          <code>fair.search</code> with the same model, so <i>Find data</i> ranks every site's datasets together, each tagged with
+          its site and opening at the site that holds its data. In this demo the partner is <i>Site B (demo)</i>, a second copy of
+          this portal on the same Kubernetes cluster with three datasets of its own.</li>
       </ol>
     </section>
     <section data-pane="tour" hidden>
@@ -927,7 +941,7 @@ dialog.small .drop { padding:34px 18px; background:var(--soft); border-color:col
           <tr><td>Preservation</td><td>A VAST snapshot per publication, not locked.</td><td>Locked (indestructible) snapshots or replication, with a retention policy.</td></tr>
           <tr><td>Scale</td><td>The function downloads whole files; search uses VAST Vector Search in VAST DataBase.</td><td>Header-only or ranged reads for large files.</td></tr>
           <tr><td>Operations</td><td>One portal replica; a personal model key.</td><td>A service-account key, more than one replica, monitoring of the pipeline, dead-letter topic and Catalog runs, and backups of fair-db.</td></tr>
-          <tr><td>Catalog of catalogs</td><td>One site's catalog, searchable in its own portal.</td><td>One option, while the requirement is still being defined: each site publishes its catalog changes (a dataset published, updated or withdrawn, with its record) as events on a topic on its own VAST Event Broker, which speaks the Kafka protocol. A central catalog, or any partner site, subscribes and keeps the same tables with a site column, re-embedding with one model so search ranks across sites, and links back to each site for access. The broker keeps an ordered, replayable history, so a new subscriber catches up from the start; catalogs that pull instead can already harvest this portal over DCAT-AP (<code>/harvest/dcat</code>) and OAI-PMH (<code>/oai</code>).</td></tr>
+          <tr><td>Catalog of catalogs</td><td>Partner repositories harvested over OAI-PMH every few minutes and searched with this site's datasets, each opening at its own site. The demo's partner, Site B, is a second copy of this portal on the same cluster.</td><td>Harvest incrementally (<code>from</code>) and honour deleted records and sets as partners support them; agree record quality and access terms with each partner. For VAST sites, one further option: each site publishes its catalog changes (a dataset published, updated or withdrawn, with its record) as events on a topic on its own VAST Event Broker, which speaks the Kafka protocol. A central catalog, or any partner site, subscribes and keeps the same tables with a site column, re-embedding with one model so search ranks across sites, and links back to each site for access. The broker keeps an ordered, replayable history, so a new subscriber catches up from the start; catalogs that pull instead can already harvest this portal over DCAT-AP (<code>/harvest/dcat</code>) and OAI-PMH (<code>/oai</code>).</td></tr>
         </tbody>
       </table></div>
       <p class="hint">The same list, with more detail, is in <code>docs/PRODUCTION.md</code> in the repository.</p>
@@ -1769,13 +1783,14 @@ const hm = location.hash.match(/^#help-(arch|review|score|data|model|prod)$/); i
 $("#q").oninput = () => { semantic = null; renderList(); };
 $("#q").onkeydown = e => { if (e.key === "Enter") searchMeaning(); };
 // ---------------------------------------------------------------- Find data
-let fstate = {q: "", domain: "", format: "", licence: "", queryable: false, folder: null}, fdata = null;
+let fstate = {q: "", domain: "", format: "", licence: "", site: "", queryable: false, folder: null}, fdata = null;
+const isRemote = f => (f || "").startsWith("@");
 const LIC = {"CC0-1.0": "CC0", "CC-BY-4.0": "CC BY 4.0", "OGL-UK-3.0": "OGL v3", "ODC-By-1.0": "ODC-By", "PDDL-1.0": "PDDL", "CC-BY-SA-4.0": "CC BY-SA 4.0"};
 const lic = l => LIC[l] || l || "licence not stated";
 
 async function loadFind() {
   const p = new URLSearchParams();
-  for (const k of ["q", "domain", "format", "licence"]) if (fstate[k]) p.set(k, fstate[k]);
+  for (const k of ["q", "domain", "format", "licence", "site"]) if (fstate[k]) p.set(k, fstate[k]);
   if (fstate.queryable) p.set("queryable", "true");
   $("#fnote").innerHTML = fstate.q ? `<span>Searching…</span>` : "";
   try { fdata = await api("/api/find?" + p); } catch (e) { $("#flist").innerHTML = `<div class="empty">${esc(String(e.message).slice(0, 160))}</div>`; return; }
@@ -1783,8 +1798,8 @@ async function loadFind() {
 }
 function renderFacets() {
   const f = fdata.facets, sel = (k, label, items) => items.length > 1 || fstate[k] ? `<select data-facet="${k}" aria-label="${label}">
-      <option value="">${label}: any</option>${items.map(([v, n]) => `<option value="${esc(v)}" ${fstate[k] === v ? "selected" : ""}>${esc(k === "licence" ? lic(v) : v)} (${n})</option>`).join("")}</select>` : "";
-  $("#facets").innerHTML = sel("domain", "Domain", f.domain) + sel("format", "Format", f.format) + sel("licence", "Licence", f.licence)
+      <option value="">${label}: any</option>${items.map(([v, n]) => `<option value="${esc(v)}" ${fstate[k] === v ? "selected" : ""}>${esc(k === "licence" ? lic(v) : k === "site" && v === "here" ? "This site" : v)} (${n})</option>`).join("")}</select>` : "";
+  $("#facets").innerHTML = sel("site", "Site", f.site || []) + sel("domain", "Domain", f.domain) + sel("format", "Format", f.format) + sel("licence", "Licence", f.licence)
     + (f.queryable ? `<label><input type="checkbox" id="fqry" ${fstate.queryable ? "checked" : ""}> Queryable</label>` : "");
   document.querySelectorAll("[data-facet]").forEach(el => el.onchange = () => { fstate[el.dataset.facet] = el.value; loadFind(); });
   const qb = $("#fqry"); if (qb) qb.onchange = () => { fstate.queryable = qb.checked; loadFind(); };
@@ -1796,13 +1811,40 @@ function renderFind() {
   const fc = $("#fclear"); if (fc) fc.onclick = () => { fstate.q = ""; $("#fq").value = ""; fqFit(); loadFind(); };
   const card = x => `<div class="fitem${x.folder === fstate.folder ? " sel" : ""}" data-ff="${esc(x.folder)}">
       <div class="t">${esc(x.title)}</div>
-      <div class="m">${[x.domain, x.formats.join(", "), lic(x.licence), x.tables ? `${x.rows.toLocaleString()} rows to query` : ""].filter(Boolean).map(esc).join(" · ")}</div>
+      <div class="m">${x.site ? `<span class="sitetag">${esc(x.site)}</span> ` : ""}${[x.domain, x.formats.join(", "), lic(x.licence), x.tables ? `${x.rows.toLocaleString()} rows to query` : ""].filter(Boolean).map(esc).join(" · ")}</div>
       ${x.matched ? `<div class="hit">Variable ${x.matched.map(m => esc(m.name) + (m.units ? ` (${esc(m.units)})` : "")).join(", ")}</div>` : ""}</div>`;
   const weak = x => fstate.q && !x.matched && x.similarity < 0.35;
   const strong = rows.filter(x => !weak(x)), rest = rows.filter(weak);
   $("#flist").innerHTML = (strong.map(card).join("") + (rest.length ? `<div class="flist-sep">Less closely related</div>` + rest.map(card).join("") : ""))
     || `<div class="empty">${fdata.total ? "Nothing published matches that." : "Nothing is published yet. Datasets appear here once a curator publishes them."}</div>`;
   document.querySelectorAll("[data-ff]").forEach(el => el.onclick = () => openFind(el.dataset.ff));
+}
+// A partner's dataset: its harvested record, and the way to it at the site that holds the data.
+async function openRemote(folder) {
+  let got;
+  try { got = await api(`/api/remote/${folder}`); } catch (e) { $("#fdetail").innerHTML = `<div class="fintro">${esc(String(e.message).slice(0, 200))}</div>`; return; }
+  const r = got.record, year = (r.date || "").slice(0, 4);
+  $("#fdetail").innerHTML = `<div class="dpage">
+    <h2>${esc(r.title)}</h2>
+    <div class="ids">${esc(r.creators.slice(0, 4).join(", "))}${year ? ` · ${esc(year)}` : ""} · ${esc(lic(r.licence))}</div>
+    <p class="desc clampbox">${esc(r.description || "")}</p>
+    <div class="elsewhere">
+      <h3>Held at ${esc(r.site)}</h3>
+      <p>Its files, tables and landing page are at ${esc(r.site)}, which decides who can access them. This site keeps a copy of
+        its record, harvested over OAI-PMH, so it is found in the same search as this site's own datasets.</p>
+      ${r.landing_page ? `<a class="primary" id="d-elsewhere" href="${esc(r.landing_page)}" target="_blank" rel="noopener">Open at ${esc(r.site)} →</a>` : ""}
+    </div>
+    <dl class="factgrid">
+      <dt>Identifier</dt><dd><code>${esc(r.pid)}</code></dd>
+      <dt>Site</dt><dd>${esc(r.site)}</dd>
+      <dt>Keywords</dt><dd>${esc(r.keywords.join(", "))}</dd>
+      ${r.formats.length ? `<dt>Formats</dt><dd>${esc(r.formats.join(", "))}</dd>` : ""}
+      ${r.coverage.length ? `<dt>Coverage</dt><dd>${esc(r.coverage.join("; "))}</dd>` : ""}
+      ${r.publisher ? `<dt>Publisher</dt><dd>${esc(r.publisher)}</dd>` : ""}
+      <dt>Licence</dt><dd>${esc(lic(r.licence))}</dd>
+      <dt>Harvested</dt><dd>${esc((r.harvested_at || "").replace("T", " ").slice(0, 16))} UTC, over OAI-PMH</dd>
+    </dl></div>`;
+  const dd = $("#fdetail .desc"); if (dd) dd.onclick = () => dd.classList.toggle("clampbox");
 }
 // The home: the search, a few example sentences, the numbers that make the point, and the datasets as cards.
 function findIntro() {
@@ -1811,7 +1853,8 @@ function findIntro() {
 }
 function renderHome() {
   if (!fdata || !$("#find-view").classList.contains("ishome")) return;
-  const rows = fdata.results, n = rows.length;
+  const all = fdata.results, rows = all.filter(x => !x.site), n = rows.length;
+  const partners = [...new Set(all.filter(x => x.site).map(x => x.site))], harvested = all.length - n;
   const asks = rows.reduce((a, x) => a + (x.rows || 0), 0), bytes = rows.reduce((a, x) => a + (x.bytes || 0), 0);
   const lics = [...new Set(rows.map(x => x.licence).filter(Boolean))].map(lic);
   const seen = new Set(), eg = [];
@@ -1823,7 +1866,8 @@ function renderHome() {
   $("#hproof").innerHTML = n ? `<div><b>${n}</b><span>published dataset${n === 1 ? "" : "s"}</span></div>
     ${asks ? `<div><b>${asks >= 1e6 ? (asks / 1e6).toFixed(1) + "M" : asks.toLocaleString()}</b><span>rows you can ask, in place</span></div>` : ""}
     <div><b>${fmtBytes(bytes)}</b><span>of files, still where they were written</span></div>
-    ${lics.length ? `<div><b>${esc(lics.slice(0, 2).join(" · "))}</b><span>open licence${lics.length === 1 ? "" : "s"}, stated</span></div>` : ""}` : "";
+    ${lics.length ? `<div><b>${esc(lics.slice(0, 2).join(" · "))}</b><span>open licence${lics.length === 1 ? "" : "s"}, stated</span></div>` : ""}
+    ${harvested ? `<div><b>${harvested}</b><span>more from ${partners.length === 1 ? esc(partners[0]) : partners.length + " partner repositories"}, searched together</span></div>` : ""}` : "";
   $("#hcards").innerHTML = rows.map(x => `<div class="panel" role="button" tabindex="0" data-ff="${esc(x.folder)}"><div class="t">${esc(x.title)}</div>
       <div class="m">${[x.domain, x.formats.join(", "), lic(x.licence), (x.published || "").slice(0, 4)].filter(Boolean).map(esc).join(" · ")}</div>
       <div class="askit">${x.tables ? `Ask it → ${x.rows.toLocaleString()} rows` : `${x.files} file${x.files === 1 ? "" : "s"} · ${fmtBytes(x.bytes)}`}</div></div>`).join("")
@@ -1840,6 +1884,7 @@ async function openFind(folder) {
   fstate.folder = folder; history.replaceState(null, "", "#find/" + folder);
   $("#find-view").classList.remove("ishome");
   if (fdata) renderFind();
+  if (isRemote(folder)) return openRemote(folder);
   let r;
   try { r = (await api(`/api/datasets/${folder}/record`)).record; } catch (e) { $("#fdetail").innerHTML = `<div class="fintro">${esc(String(e.message).slice(0, 200))}</div>`; return; }
   if (r.status !== "published") { $("#fdetail").innerHTML = `<div class="fintro"><h2>Not published</h2><p class="sub">This dataset is still with its curators.
@@ -1967,6 +2012,7 @@ document.addEventListener("click", e => { const a = e.target.closest("[data-find
   showView(m ? m[1] : "find", m && m[2] ? decodeURIComponent(m[2]) : null);
 }
 api("/api/info").then(i => {
+  if (i.site) { const sn = $("#sitename"); sn.textContent = i.site; sn.hidden = false; document.title = `FAIR data · ${i.site}`; }
   runningOn = i.mode === "local" ? "this machine (local mode)" : "the VAST cluster";
   $("#log-mode").textContent = i.mode === "local" ? "local pipeline · " + i.model : "VAST cluster · " + i.model;
   $("#pipe-line").textContent = $("#pipe-line").textContent.replace(/^Pipeline/, `Pipeline on ${runningOn}`);
