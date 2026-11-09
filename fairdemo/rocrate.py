@@ -17,6 +17,7 @@ import json
 import os
 import re
 
+from . import theme
 from .curate import accepted
 
 TEST_ARK_SHOULDER = "ark:/99999/fk4"
@@ -253,8 +254,7 @@ LICENCE_NAMES = {"CC0-1.0": "CC0 1.0 (public domain)", "CC-BY-4.0": "CC BY 4.0",
 
 # The landing page's look: the portal's palette, light and dark, with nothing loaded from elsewhere.
 PAGE_CSS = """
-:root{--bg:#f3f6f5;--panel:#fff;--ink:#183530;--muted:#617670;--line:#dce5e1;--soft:#edf3f0;--accent:#087b66;--accent-ink:#fff;color-scheme:light}
-@media (prefers-color-scheme:dark){:root{--bg:#101c19;--panel:#172722;--ink:#e6f1eb;--muted:#a0b8ad;--line:#30473d;--soft:#20362d;--accent:#69d5b6;--accent-ink:#10251e;color-scheme:dark}}
+:root{color-scheme:light} @media (prefers-color-scheme:dark){:root{color-scheme:dark}}
 *{box-sizing:border-box}
 body{margin:0;font:15px/1.55 ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;color:var(--ink);background:var(--bg);-webkit-font-smoothing:antialiased}
 a{color:var(--accent)} code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.9em}
@@ -345,14 +345,15 @@ def _preview(root, people, record, crate) -> str:
                   "or Parquet. Units and meanings are the reviewed ones.</p>%s</section>" % (e(TABLE_HOME), tables))
     acts = (f'<a class="primary" href="#files">Download files</a>' + (' <a href="#query">Query it in place</a>' if tables else "")
             + f' <a href="{e(url)}/ro-crate-metadata.json">RO-Crate</a> <a href="{e(url)}/croissant.json">Croissant</a>')
+    palette = theme.css(dark_selectors=(":root",), toggle=False)
     return f"""<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>{e(root['name'])}</title>
 <link rel="cite-as" href="{e(url)}">
 <link rel="describedby" type="application/ld+json" href="{e(url)}/ro-crate-metadata.json">
 <script type="application/ld+json">{json.dumps(jsonld, default=str)}</script>
-<style>{PAGE_CSS}</style></head>
-<body><div class="top"><span class="logo" aria-hidden="true">F</span><b>{e(PUBLISHER)}</b><span class="where">Dataset landing page</span></div>
+<style>{palette}{PAGE_CSS}</style></head>
+<body><div class="top"><span class="logo" aria-hidden="true">{e(theme.logo())}</span><b>{e(PUBLISHER)}</b><span class="where">Dataset landing page</span></div>
 <main>
 <section class="card">
 <span class="pid">{e(root['identifier'])}</span>

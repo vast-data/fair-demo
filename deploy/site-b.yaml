@@ -35,6 +35,9 @@ spec:
             - {name: FAIR_LOCAL_ROOT, value: /data/buckets}
             - {name: FAIR_SITE_SEED, value: /app/site-seed}
             - {name: FAIR_SITE_NAME, value: "Site B (demo)"}
+            # its own look, so it reads as a different institution: indigo, with a "B" logo
+            - {name: FAIR_SITE_THEME, value: indigo}
+            - {name: FAIR_SITE_LOGO, value: B}
             - {name: FAIR_PUBLISHER, value: "Site B (demo) university data repository"}
             - {name: LANDING_BASE_URL, value: "${LANDING_BASE_URL}"}
             # Site B isn't on VAST: its published records name its own storage
