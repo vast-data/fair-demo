@@ -26,7 +26,7 @@ for line in (ROOT / ".env").read_text().splitlines() if (ROOT / ".env").exists()
     if sep and not k.startswith("#"):
         os.environ.setdefault(k.strip(), v.split(" #", 1)[0].strip())
 
-from fairdemo import catalog, curate, fairscore, federation, harvest, llm, nlquery, rocrate, sweep, tables  # noqa: E402
+from fairdemo import catalog, curate, fairscore, federation, harvest, llm, nlquery, rocrate, sweep, tables, theme  # noqa: E402
 from portal import store as stores  # noqa: E402
 
 from contextlib import asynccontextmanager  # noqa: E402
@@ -65,7 +65,12 @@ def record_for(folder: str) -> dict:
 
 @app.get("/", response_class=HTMLResponse)
 def index():
-    return (ROOT / "portal/static/index.html").read_text()
+    page = (ROOT / "portal/static/index.html").read_text()
+    if theme.name() != "teal" or theme.logo() != "F":
+        # A partner site's own look (FAIR_SITE_THEME, FAIR_SITE_LOGO): its palette after the page's own, so it wins.
+        page = page.replace("</head>", "<style>%s</style>\n</head>" % theme.css(), 1)
+        page = page.replace('<span class="logo" aria-hidden="true">F</span>', '<span class="logo" aria-hidden="true">%s</span>' % theme.logo(), 1)
+    return page
 
 
 # This portal's name among its partners (shown in the header when set), e.g. "Site B (demo)".
@@ -74,7 +79,7 @@ SITE_NAME = os.environ.get("FAIR_SITE_NAME", "").strip()
 
 @app.get("/api/info")
 def info():
-    return {"mode": store.mode, "model": llm.CHAT_MODEL or "(not set)", "site": SITE_NAME or None,
+    return {"mode": store.mode, "model": llm.CHAT_MODEL or "(not set)", "site": SITE_NAME or None, "table_home": rocrate.TABLE_HOME,
             "peers": [p["name"] for p in federation.peers()],
             "search": store.db is not None or store.mode == "local", "in_cluster": store.db is not None,
             "embed_model": llm.EMBED_MODEL or "(not set)", "embed_dims": catalog.DIM,

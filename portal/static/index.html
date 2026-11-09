@@ -1143,6 +1143,7 @@ const show = v => v == null ? "" : Array.isArray(v) ? v.map(x => typeof x === "o
 async function api(path, opts) { const r = await fetch(path, opts); if (!r.ok) throw new Error(await r.text()); return r.json(); }
 
 let runningOn = "";   // "the VAST cluster" or "this machine", from /api/info
+let tableHome = "VAST DataBase";   // where this site keeps the data as tables, from /api/info (a partner site names its own)
 async function refresh() {
   const d = await api("/api/datasets");
   all = d.datasets;
@@ -1324,7 +1325,7 @@ function renderDetail(r, score) {
     <div class="dpane" data-dp="files" hidden><table class="vars"><tbody>${fileRows}</tbody></table></div>
     <div class="dpane" data-dp="checks" hidden><div class="checks" id="checks">${checks(score)}</div></div>
     ${published ? "" : `<section class="publish-heading"><h3>Publish the record</h3><p>Confirm your name and choose how this dataset can be used.</p></section><div class="pubbar"><label for="reviewer">Reviewed by</label><input type="text" id="reviewer" placeholder="your name or ORCID" value="${esc(localStorage.getItem("reviewer") || "")}">
-      ${tabular ? `<label class="tog" title="The files stay where they are either way; this also loads the tabular ones into VAST DataBase so they can be asked questions in place"><input type="checkbox" id="pub-tables" checked> Also load as tables in VAST DataBase</label>` : ""}
+      ${tabular ? `<label class="tog" title="The files stay where they are either way; this also loads the tabular ones into ${esc(tableHome)} so they can be asked questions in place"><input type="checkbox" id="pub-tables" checked> Also load as tables in ${esc(tableHome)}</label>` : ""}
       <button class="primary" id="publish">Publish</button><span id="pubmsg" class="sub"></span></div>`}
   </div>`;
   document.querySelectorAll("#detail .dtabs button").forEach(b => b.onclick = () => {
@@ -1353,17 +1354,17 @@ let qState = {}, retryUntil = 0;
 function curateTables(r) {
   if ((r.tables || []).length) {
     const rows = r.tables.reduce((n, t) => n + t.rows, 0), notes = (r.table_notes || []).length;
-    return `<div class="callout ok">Loaded as ${r.tables.length} table${r.tables.length > 1 ? "s" : ""} (${rows.toLocaleString()} rows) in VAST DataBase, so it can be asked questions in place.
+    return `<div class="callout ok">Loaded as ${r.tables.length} table${r.tables.length > 1 ? "s" : ""} (${rows.toLocaleString()} rows) in ${esc(tableHome)}, so it can be asked questions in place.
       <a href="#find/${esc(r.key_prefix)}" data-find="${esc(r.key_prefix)}">Ask it in Find data</a>${notes ? ` · <span class="sub">${notes} file(s) not loaded: see Find data</span>` : ""}</div>`;
   }
-  if (r.tables_wanted === false) return `<p class="sub tline">Published as files only, by the curator's choice: not loaded into VAST DataBase.</p>`;
+  if (r.tables_wanted === false) return `<p class="sub tline">Published as files only, by the curator's choice: not loaded into ${esc(tableHome)}.</p>`;
   return tablesSection(r);
 }
 function tablesSection(r) {
   const notes = r.table_notes || [];
   const noteList = notes.length ? `<ul class="tnotes">${notes.map(n => `<li>${esc(n)}</li>`).join("")}</ul>` : "";
   if (r.tables_status === "loading")
-    return `<div class="callout info">Loading the data into VAST DataBase as tables, so it can be queried in place. The dataset is
+    return `<div class="callout info">Loading the data into ${esc(tableHome)} as tables, so it can be queried in place. The dataset is
       already published; this only adds a way to use it.</div>`;
   if ((r.tables || []).length)
     return queryPanel(r) + (notes.length ? `<details class="tnotes-box"><summary>Not everything became a table <span class="chip">${notes.length}</span></summary>${noteList}</details>` : "");
@@ -1376,7 +1377,7 @@ function tablesSection(r) {
 function queryPanel(r) {
   const rows = (r.tables || []).reduce((n, t) => n + (t.rows || 0), 0);
   return `<section class="qbox"><div class="qhead"><h3>Ask this dataset</h3>
-    <span class="sub">${rows.toLocaleString()} rows in VAST DataBase · answered in place, nothing downloaded</span></div>
+    <span class="sub">${rows.toLocaleString()} rows in ${esc(tableHome)} · answered in place, nothing downloaded</span></div>
     <div class="query" id="query"></div></section>`;
 }
 // In the grid, whole numbers exactly as stored (a year is 2000, not 2,000); summaries keep separators.
@@ -2013,6 +2014,7 @@ document.addEventListener("click", e => { const a = e.target.closest("[data-find
 }
 api("/api/info").then(i => {
   if (i.site) { const sn = $("#sitename"); sn.textContent = i.site; sn.hidden = false; document.title = `FAIR data · ${i.site}`; }
+  if (i.table_home) tableHome = i.table_home;
   runningOn = i.mode === "local" ? "this machine (local mode)" : "the VAST cluster";
   $("#log-mode").textContent = i.mode === "local" ? "local pipeline · " + i.model : "VAST cluster · " + i.model;
   $("#pipe-line").textContent = $("#pipe-line").textContent.replace(/^Pipeline/, `Pipeline on ${runningOn}`);
