@@ -247,6 +247,56 @@ def _croissant(record, a, pid, landing, license_url, people, s3_prefix) -> dict:
     return doc
 
 
+LICENCE_NAMES = {"CC0-1.0": "CC0 1.0 (public domain)", "CC-BY-4.0": "CC BY 4.0", "CC-BY-3.0": "CC BY 3.0",
+                 "OGL-UK-3.0": "Open Government Licence v3.0", "ODC-By-1.0": "ODC Attribution 1.0", "PDDL-1.0": "PDDL 1.0",
+                 "CC-BY-SA-4.0": "CC BY-SA 4.0"}
+
+# The landing page's look: the portal's palette, light and dark, with nothing loaded from elsewhere.
+PAGE_CSS = """
+:root{--bg:#f3f6f5;--panel:#fff;--ink:#183530;--muted:#617670;--line:#dce5e1;--soft:#edf3f0;--accent:#087b66;--accent-ink:#fff;color-scheme:light}
+@media (prefers-color-scheme:dark){:root{--bg:#101c19;--panel:#172722;--ink:#e6f1eb;--muted:#a0b8ad;--line:#30473d;--soft:#20362d;--accent:#69d5b6;--accent-ink:#10251e;color-scheme:dark}}
+*{box-sizing:border-box}
+body{margin:0;font:15px/1.55 ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;color:var(--ink);background:var(--bg);-webkit-font-smoothing:antialiased}
+a{color:var(--accent)} code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.9em}
+.top{display:flex;align-items:center;gap:10px;padding:14px max(16px,calc((100vw - 60rem)/2 + 16px));border-bottom:1px solid var(--line);background:var(--panel)}
+.top .logo{width:26px;height:26px;border-radius:7px;background:var(--accent);color:var(--accent-ink);display:grid;place-items:center;font-weight:800;font-size:13px;flex:none}
+.top b{font-size:14px} .top .where{margin-left:auto;color:var(--muted);font-size:13px}
+main{max-width:60rem;margin:0 auto;padding:28px 16px 48px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:28px 28px 24px;margin-bottom:18px}
+.pid{display:inline-block;font-size:12.5px;color:var(--muted);background:var(--soft);border-radius:999px;padding:2px 10px}
+h1{font-size:clamp(22px,3.4vw,30px);line-height:1.25;letter-spacing:-.02em;margin:12px 0 6px;text-wrap:balance}
+.by{color:var(--muted);font-size:14px;margin:0 0 14px}
+.desc{margin:0 0 18px;max-width:46rem}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 20px;padding:0;list-style:none}
+.chips li{font-size:12.5px;border:1px solid var(--line);border-radius:999px;padding:2px 10px;background:var(--panel)}
+.acts{display:flex;flex-wrap:wrap;gap:10px 18px;font-size:14px}
+.acts a.primary{background:var(--accent);color:var(--accent-ink);text-decoration:none;font-weight:600;border-radius:9px;padding:7px 14px}
+.cite{margin-top:20px;padding:12px 14px;border-radius:10px;background:var(--soft);font-size:13.5px;overflow-wrap:anywhere}
+.cite b{display:block;font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:2px}
+h2{font-size:17px;letter-spacing:-.01em;margin:0 0 6px} h3{font-size:14px;margin:22px 0 4px;overflow-wrap:anywhere}
+.lead{color:var(--muted);font-size:14px;margin:0 0 14px;max-width:46rem}
+.scroll{overflow-x:auto;border:1px solid var(--line);border-radius:10px}
+table{border-collapse:collapse;width:100%;font-size:13.5px}
+th{text-align:left;font-size:12px;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);font-weight:600;background:var(--soft);padding:8px 12px}
+td{padding:7px 12px;border-top:1px solid var(--line);vertical-align:top} td.n{font-variant-numeric:tabular-nums;white-space:nowrap}
+.meta{color:var(--muted);font-size:13px;margin:0 0 8px} .note{color:var(--muted);font-size:13px;margin:12px 0 0}
+footer{color:var(--muted);font-size:13px;text-align:center}
+@media (max-width:600px){.card{padding:20px 16px} .top .where{display:none}}
+"""
+
+
+def render_preview(record: dict, crate: dict) -> str:
+    """The landing page for a published record, from its RO-Crate: so a page published earlier is shown in the
+    current design too."""
+    g = {x["@id"]: x for x in crate["@graph"]}
+    root = dict(g["./"])
+    people = [g[c["@id"]] for c in root.get("creator", []) if c.get("@id") in g]
+    if root.get("variableMeasured"):
+        root["variableMeasured"] = [{k: v for k, v in g[ref["@id"]].items() if k != "@id"}
+                                    for ref in root["variableMeasured"] if ref.get("@id") in g]
+    return _preview(root, people, record, crate)
+
+
 def _preview(root, people, record, crate) -> str:
     e = html.escape
     jsonld = {k: v for k, v in root.items() if k not in ("hasPart", "distribution", "archivedAt", "publisher")}
@@ -268,47 +318,81 @@ def _preview(root, people, record, crate) -> str:
                              for p in people]
     jsonld["distribution"] = [{"@type": "DataDownload", "contentUrl": g["contentUrl"], "encodingFormat": g["encodingFormat"]}
                               for g in crate["@graph"] if g.get("@type") == "File" or str(g["@id"]).startswith("#table-")]
-    rows = "".join('<tr><td><a href="%s/files/%s">%s</a></td><td>%s</td><td>%s</td><td><code>%s…</code></td></tr>'
-                   % (e(root["url"]), e(f["name"]), e(f["name"]), e(f["format"]), f"{f['size']:,}", f["sha256"][:16])
+    url = root["url"]
+    publisher = pub["name"] if pub else PUBLISHER
+    lic = (root.get("license") or {}).get("@id", "")
+    lic_id = next((g.get("name") for g in crate["@graph"] if g["@id"] == lic), None) or lic
+    lic_html = f'<a href="{e(lic)}">{e(LICENCE_NAMES.get(lic_id, lic_id))}</a>' if lic else "licence not stated"
+    names = [p["name"] for p in people]
+    year = str(root.get("datePublished") or "")[:4]
+    by = " · ".join(x for x in (e(", ".join(names[:6]) + (f" and {len(names) - 6} more" if len(names) > 6 else "")) if names else "",
+                                e(year), lic_html) if x)
+    cite = "%s (%s). %s. %s. %s" % (", ".join(names) or publisher, year or "n.d.", root["name"], publisher, url)
+    keywords = root.get("keywords") or []
+    keywords = keywords.split(",") if isinstance(keywords, str) else keywords
+    chips = "".join(f"<li>{e(str(k).strip())}</li>" for k in keywords if str(k).strip())
+    rows = "".join('<tr><td><a href="%s/files/%s">%s</a></td><td>%s</td><td class="n">%s</td><td><code title="%s">%s…</code></td></tr>'
+                   % (e(url), e(f["name"]), e(f["name"]), e(f["format"]), _size(f["size"]), e(f["sha256"]), f["sha256"][:16])
                    for f in record["files"])
     snap = record.get("snapshot")
-    preserved = ("<p><b>Preserved:</b> VAST snapshot <code>%s</code>, taken %s at publication. The files above are "
+    preserved = ('<p class="note"><b>Preserved:</b> VAST snapshot <code>%s</code>, taken %s at publication. The files are '
                  "served from the live folder only while they match it.</p>" % (e(snap["name"]), e(str(snap.get("created"))[:19])))\
-        if snap else ""
-    tables = "".join(_table_html(root["url"], t) for t in record.get("tables") or [])
+        if snap else '<p class="note">Each file is served only while it matches the checksum it was published with.</p>'
+    tables = "".join(_table_html(url, t) for t in record.get("tables") or [])
     if tables:
-        tables = ("<h2>Query it in place</h2><p>The data is also in %s, one table per part, so it can be "
-                  "read without downloading the files: choose columns, filter rows, and get CSV, JSON or Parquet. "
-                  "Units and meanings are the reviewed ones.</p>" % e(TABLE_HOME)) + tables
-    lic = root.get("license", {}).get("@id", "")
+        tables = ('<section class="card" id="query"><h2>Query it in place</h2><p class="lead">The data is also in %s, one table '
+                  "per part, so it can be read without downloading the files: choose columns, filter rows, and get CSV, JSON "
+                  "or Parquet. Units and meanings are the reviewed ones.</p>%s</section>" % (e(TABLE_HOME), tables))
+    acts = (f'<a class="primary" href="#files">Download files</a>' + (' <a href="#query">Query it in place</a>' if tables else "")
+            + f' <a href="{e(url)}/ro-crate-metadata.json">RO-Crate</a> <a href="{e(url)}/croissant.json">Croissant</a>')
     return f"""<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>{e(root['name'])}</title>
-<link rel="cite-as" href="{e(root['url'])}">
-<link rel="describedby" type="application/ld+json" href="{e(root['url'])}/ro-crate-metadata.json">
+<link rel="cite-as" href="{e(url)}">
+<link rel="describedby" type="application/ld+json" href="{e(url)}/ro-crate-metadata.json">
 <script type="application/ld+json">{json.dumps(jsonld, default=str)}</script>
-<style>body{{font:16px/1.5 system-ui,sans-serif;max-width:52rem;margin:2rem auto;padding:0 1rem;color:#1d1d1f;background:#fff}}
-td,th{{text-align:left;padding:.25rem .75rem .25rem 0}}code{{background:#f2f2f2;padding:0 .25rem}}</style></head>
-<body><p><code>{e(root['identifier'])}</code></p><h1>{e(root['name'])}</h1>
-<p>{e(root.get('description', ''))}</p>
-<p><b>Creators:</b> {e('; '.join(p['name'] for p in people) or 'not stated')}<br>
-<b>Licence:</b> {f'<a href="{e(lic)}">{e(lic)}</a>' if lic else 'not stated'}<br>
-<b>Keywords:</b> {e(', '.join(root.get('keywords') or []))}</p>
-<table><tr><th>File</th><th>Format</th><th>Bytes</th><th>SHA-256</th></tr>{rows}</table>
-{preserved}
+<style>{PAGE_CSS}</style></head>
+<body><div class="top"><span class="logo" aria-hidden="true">F</span><b>{e(PUBLISHER)}</b><span class="where">Dataset landing page</span></div>
+<main>
+<section class="card">
+<span class="pid">{e(root['identifier'])}</span>
+<h1>{e(root['name'])}</h1>
+<p class="by">{by}</p>
+<p class="desc">{e(root.get('description', ''))}</p>
+{f'<ul class="chips" aria-label="Keywords">{chips}</ul>' if chips else ""}
+<div class="acts">{acts}</div>
+<div class="cite"><b>Cite as</b>{e(cite)}</div>
+</section>
+<section class="card" id="files"><h2>Files</h2>
+<div class="scroll"><table><tr><th>File</th><th>Format</th><th>Size</th><th>SHA-256</th></tr>{rows}</table></div>
+{preserved}</section>
 {tables}
-<p>Machine-readable: <a href="{e(root['url'])}/ro-crate-metadata.json">RO-Crate</a> · <a href="{e(root['url'])}/croissant.json">Croissant</a></p>
-</body></html>"""
+<footer>Machine-readable: <a href="{e(url)}/ro-crate-metadata.json">RO-Crate</a> · <a href="{e(url)}/croissant.json">Croissant</a> · published by {e(PUBLISHER)}</footer>
+</main></body></html>"""
+
+
+def _size(n: int) -> str:
+    for unit in ("bytes", "kB", "MB", "GB", "TB"):
+        if n < 1000 or unit == "TB":
+            return f"{n:,} bytes" if unit == "bytes" else f"{n:.1f} {unit}"
+        n /= 1000
 
 
 def _table_html(base: str, t: dict) -> str:
     e = html.escape
     url = "%s/tables/%s" % (base, t["table"])
-    cols = "".join("<tr><td><code>%s</code></td><td>%s</td><td>%s</td><td>%s</td></tr>" % (
-        e(c["name"]), e(c.get("units") or ""), e(c.get("description") or c.get("standard_name") or ""),
-        e("%s to %s" % (c["min"], c["max"]) if c.get("min") is not None else c["type"])) for c in t["columns"][:40])
-    more = "<p>… and %d more columns.</p>" % (len(t["columns"]) - 40) if len(t["columns"]) > 40 else ""
-    return (f"<h3><code>{e(t['location'])}</code></h3><p>{t['rows']:,} rows from {e(t['source'])} · "
+    cols = t["columns"][:40]
+    # Units and meaning only when some column has them: an empty column says nothing.
+    units = any(c.get("units") for c in cols)
+    meaning = any(c.get("description") or c.get("standard_name") for c in cols)
+    rng = lambda c: ("%s" % c["min"] if c["min"] == c["max"] else "%s to %s" % (c["min"], c["max"])) \
+        if c.get("min") is not None else ("text" if c["type"] == "string" else c["type"])
+    head = "<tr><th>Column</th>%s%s<th>Range</th></tr>" % ("<th>Units</th>" if units else "", "<th>Meaning</th>" if meaning else "")
+    body = "".join("<tr><td><code>%s</code></td>%s%s<td class=\"n\">%s</td></tr>" % (
+        e(c["name"]), "<td>%s</td>" % e(c.get("units") or "") if units else "",
+        "<td>%s</td>" % e(c.get("description") or c.get("standard_name") or "") if meaning else "", e(rng(c))) for c in cols)
+    more = '<p class="note">… and %d more columns.</p>' % (len(t["columns"]) - 40) if len(t["columns"]) > 40 else ""
+    return (f"<h3><code>{e(t['location'])}</code></h3><p class=\"meta\">{t['rows']:,} rows from {e(t['source'])} · "
             f"<a href=\"{e(url)}?limit=100&format=csv\">first 100 rows (CSV)</a> · "
             f"<a href=\"{e(url)}?limit=100\">JSON</a></p>"
-            f"<table><tr><th>Column</th><th>Units</th><th>Meaning</th><th>Range</th></tr>{cols}</table>{more}")
+            f"<div class=\"scroll\"><table>{head}{body}</table></div>{more}")
