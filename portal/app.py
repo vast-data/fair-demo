@@ -809,7 +809,17 @@ def landing(pid: str, request: Request):
         if name is None:
             wants_ld = "ld+json" in request.headers.get("accept", "")
             name = "ro-crate-metadata.json" if wants_ld else "ro-crate-preview.html"
-        body = store.get_bytes(f"{folder}/{name}")
+        body = None
+        if name == "ro-crate-preview.html":
+            # Drawn from the published RO-Crate as it is served, so pages published earlier get the current design.
+            crate = store.get_bytes(f"{folder}/ro-crate-metadata.json")
+            if crate:
+                try:
+                    body = rocrate.render_preview(r, json.loads(crate)).encode()
+                except Exception:  # noqa: BLE001 - the page as published, then
+                    body = None
+        if body is None:
+            body = store.get_bytes(f"{folder}/{name}")
         if body is None:
             break
         media = "text/html; charset=utf-8" if name.endswith(".html") else "application/ld+json"
