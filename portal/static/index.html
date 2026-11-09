@@ -648,7 +648,7 @@ dialog.small .drop { padding:34px 18px; background:var(--soft); border-color:col
         to approve it. Approving publishes standard, machine-readable metadata next to the data.</p>
       <div class="mode-note" id="arch-mode"></div>
       <div class="arch-wrap">
-      <svg class="arch" viewBox="0 0 1120 752" role="img" aria-label="Architecture. On the left, outside the cluster: a researcher or HPC job, and this portal on Kubernetes, which also searches VAST DB. Inside the VAST cluster: the fair-raw and fair-estate buckets, VAST Catalog, the element trigger and a Kafka topic on the VAST Event Broker, which feed the DataEngine function (profile, curate, publish); below it, what the function writes: a snapshot, VAST DB, the metadata next to the data and the fair-docs bucket; VAST DB holds the published data as tables too, which the portal queries, and Trino, managed by VAST on the CNodes, answers SQL over them. On the right, outside: the LiteLLM model gateway, and, as an option not built, other catalogs that subscribe to this site's publish events on the Event Broker.">
+      <svg class="arch" viewBox="0 0 1120 836" role="img" aria-label="Architecture. On the left, outside the cluster: a researcher or HPC job, and this portal on Kubernetes, which also searches VAST DB. Inside the VAST cluster: the fair-raw and fair-estate buckets, VAST Catalog, the element trigger and a Kafka topic on the VAST Event Broker, which feed the DataEngine function (profile, curate, publish); below it, what the function writes: a snapshot, VAST DB, the metadata next to the data and the fair-docs bucket; VAST DB holds the published data as tables too, which the portal queries, and Trino, managed by VAST on the CNodes, answers SQL over them. On the right, outside: the LiteLLM model gateway, and, as an option not built, other catalogs that subscribe to this site's publish events on the Event Broker. Below the portal: catalogs that harvest it over DCAT-AP or OAI-PMH.">
         <defs>
           <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="ah" d="M0,0 L10,5 L0,10 z"/></marker>
           <marker id="ahy" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="ah you" d="M0,0 L10,5 L0,10 z"/></marker>
@@ -658,7 +658,7 @@ dialog.small .drop { padding:34px 18px; background:var(--soft); border-color:col
         <text class="t" x="36" y="84">Researcher / HPC job</text>
         <text class="s" x="36" y="104">writes over S3 or NFSv4</text>
         <rect class="zone k8s" x="10" y="125" width="204" height="250" rx="12"/>
-        <text class="zl" x="22" y="366">KUBERNETES</text>
+        <text class="zl" x="118" y="366">KUBERNETES</text>
         <rect class="you" x="22" y="135" width="180" height="210" rx="8"/>
         <text class="t" x="36" y="159">This portal</text>
         <text class="s" x="36" y="179">(you are here)</text>
@@ -669,6 +669,7 @@ dialog.small .drop { padding:34px 18px; background:var(--soft); border-color:col
         <text class="s" x="36" y="269">the backlog, searches,</text>
         <text class="s" x="36" y="287">queries the data tables,</text>
         <text class="s" x="36" y="305">serves /id/ark:/… pages</text>
+        <text class="s" x="36" y="323">and DCAT, OAI-PMH feeds</text>
         <!-- the VAST cluster -->
         <rect class="zone" x="282" y="30" width="621" height="706" rx="12"/>
         <text class="zl" x="298" y="52">VAST CLUSTER</text>
@@ -784,6 +785,12 @@ dialog.small .drop { padding:34px 18px; background:var(--soft); border-color:col
         <text class="s" x="120" y="644">query: the</text>
         <text class="s" x="120" y="660">data tables,</text>
         <text class="s" x="120" y="676">VAST DB SDK</text>
+        <!-- catalogs that pull: the portal serves the published records as DCAT-AP and OAI-PMH -->
+        <path class="ln" d="M60,345 V752" marker-end="url(#ah)"/>
+        <rect class="box" x="22" y="756" width="180" height="70" rx="8"/>
+        <text class="t" x="36" y="780">Harvesting catalogs</text>
+        <text class="s" x="36" y="800">pull published records</text>
+        <text class="s" x="36" y="818">over DCAT-AP or OAI-PMH</text>
         <!-- step numbers, as in the list below -->
         <g><circle class="num" cx="245" cy="74" r="10"/><text class="numt" x="241" y="78">1</text></g>
         <g><circle class="num" cx="512" cy="86" r="10"/><text class="numt" x="508" y="90">2</text></g>
@@ -794,6 +801,7 @@ dialog.small .drop { padding:34px 18px; background:var(--soft); border-color:col
         <g><circle class="num" cx="112" cy="560" r="10"/><text class="numt" x="108" y="564">7</text></g>
         <g><circle class="num" cx="112" cy="690" r="10"/><text class="numt" x="108" y="694">8</text></g>
         <g><circle class="num" cx="245" cy="297" r="10"/><text class="numt" x="241" y="301">9</text></g>
+        <g><circle class="num" cx="60" cy="560" r="10"/><text class="numt" x="53" y="564">10</text></g>
       </svg>
       </div>
       <ol class="steps">
@@ -824,6 +832,10 @@ dialog.small .drop { padding:34px 18px; background:var(--soft); border-color:col
           file in the namespace. <i>Backlog</i> lists folders that hold data but have no FAIR record (dark data), with size,
           formats and any docs. <i>Curate</i> drops a <code>_READY</code> marker, and the same function curates the folder in
           place. The estate bucket <code>fair-estate</code> is shared over S3 and NFS.</li>
+        <li><b>Harvest.</b> Other catalogs can pull every published record in the open standards research catalogs collect
+          from: <b>DCAT-AP 3</b> at <code>/harvest/dcat</code>, as data portals harvest, and <b>OAI-PMH 2.0</b> with Dublin Core at
+          <code>/oai</code>, as repositories and aggregators harvest. Both are built from the published RO-Crate, so a harvester
+          sees exactly what was published.</li>
       </ol>
     </section>
     <section data-pane="tour" hidden>
@@ -915,7 +927,7 @@ dialog.small .drop { padding:34px 18px; background:var(--soft); border-color:col
           <tr><td>Preservation</td><td>A VAST snapshot per publication, not locked.</td><td>Locked (indestructible) snapshots or replication, with a retention policy.</td></tr>
           <tr><td>Scale</td><td>The function downloads whole files; search uses VAST Vector Search in VAST DataBase.</td><td>Header-only or ranged reads for large files.</td></tr>
           <tr><td>Operations</td><td>One portal replica; a personal model key.</td><td>A service-account key, more than one replica, monitoring of the pipeline, dead-letter topic and Catalog runs, and backups of fair-db.</td></tr>
-          <tr><td>Catalog of catalogs</td><td>One site's catalog, searchable in its own portal.</td><td>One option, while the requirement is still being defined: each site publishes its catalog changes (a dataset published, updated or withdrawn, with its record) as events on a topic on its own VAST Event Broker, which speaks the Kafka protocol. A central catalog, or any partner site, subscribes and keeps the same tables with a site column, re-embedding with one model so search ranks across sites, and links back to each site for access. The broker keeps an ordered, replayable history, so a new subscriber catches up from the start; a DCAT-AP feed can be generated from the same events for harvesters that pull.</td></tr>
+          <tr><td>Catalog of catalogs</td><td>One site's catalog, searchable in its own portal.</td><td>One option, while the requirement is still being defined: each site publishes its catalog changes (a dataset published, updated or withdrawn, with its record) as events on a topic on its own VAST Event Broker, which speaks the Kafka protocol. A central catalog, or any partner site, subscribes and keeps the same tables with a site column, re-embedding with one model so search ranks across sites, and links back to each site for access. The broker keeps an ordered, replayable history, so a new subscriber catches up from the start; catalogs that pull instead can already harvest this portal over DCAT-AP (<code>/harvest/dcat</code>) and OAI-PMH (<code>/oai</code>).</td></tr>
         </tbody>
       </table></div>
       <p class="hint">The same list, with more detail, is in <code>docs/PRODUCTION.md</code> in the repository.</p>
@@ -1869,6 +1881,7 @@ async function openFind(folder) {
       <dt>FAIR score</dt><dd>${r.score_after ?? "–"} of 100</dd>
       <dt>Citation</dt><dd>${esc(cite)}</dd>
       <dt>Metadata</dt><dd><a href="/id/${esc(r.pid)}/ro-crate-metadata.json" target="_blank">RO-Crate</a> · <a href="/id/${esc(r.pid)}/croissant.json" target="_blank">Croissant</a></dd>
+      <dt>Harvest</dt><dd><a href="/harvest/dcat" target="_blank">DCAT</a> · <a href="/oai?verb=GetRecord&amp;metadataPrefix=oai_dc&amp;identifier=${encodeURIComponent(r.pid)}" target="_blank">OAI-PMH</a></dd>
     </dl></div>
     <div class="dpane" data-dp="vars" hidden><table class="vars"><tbody>${vars}</tbody></table></div>
     <div class="dpane" data-dp="files" hidden><table class="vars"><tbody>${files}</tbody></table></div>

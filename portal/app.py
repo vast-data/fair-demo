@@ -23,7 +23,7 @@ for line in (ROOT / ".env").read_text().splitlines() if (ROOT / ".env").exists()
     if sep and not k.startswith("#"):
         os.environ.setdefault(k.strip(), v.split(" #", 1)[0].strip())
 
-from fairdemo import catalog, curate, fairscore, llm, nlquery, rocrate, sweep, tables  # noqa: E402
+from fairdemo import catalog, curate, fairscore, harvest, llm, nlquery, rocrate, sweep, tables  # noqa: E402
 from portal import store as stores  # noqa: E402
 
 app = FastAPI(title="FAIR portal")
@@ -620,6 +620,45 @@ def download(pid: str, fname: str):
             "Content-Length": str(f["size"]), "Content-Disposition": f'attachment; filename="{fname}"',
             "Digest": f"sha-256={digest}", "Link": f'<{r.get("landing_page", "")}>; rel="cite-as"'})
     raise HTTPException(404, f"unknown identifier {pid}")
+
+
+def _harvest_entries() -> list[dict]:
+    """Every published dataset as its published RO-Crate says it, for the harvest endpoints."""
+    out = []
+    for r in _published():
+        body = store.get_bytes(f"{r.get('key_prefix') or r['name']}/ro-crate-metadata.json")
+        if body:
+            e = harvest.entry(r, json.loads(body))
+            if e["pid"] and e["datestamp"]:
+                out.append(e)
+    return out
+
+
+def _base(request: Request) -> str:
+    return str(request.base_url).rstrip("/")
+
+
+@app.get("/harvest/dcat")
+def harvest_dcat(request: Request):
+    """The catalogue as DCAT-AP 3 JSON-LD, for data portals that harvest DCAT."""
+    doc = harvest.dcat_catalog(_harvest_entries(), f"{_base(request)}/harvest/dcat", f"{_base(request)}/",
+                               rocrate.PUBLISHER)
+    return Response(json.dumps(doc, indent=1), media_type="application/ld+json")
+
+
+@app.api_route("/oai", methods=["GET", "POST"])
+async def harvest_oai(request: Request):
+    """OAI-PMH 2.0 with Dublin Core (oai_dc), for repositories and aggregators that harvest OAI-PMH."""
+    params: dict[str, list[str]] = {}
+    pairs = list(request.query_params.multi_items())
+    if request.method == "POST":
+        pairs += list((await request.form()).multi_items())
+    for k, v in pairs:
+        params.setdefault(k, []).append(str(v))
+    xml = harvest.oai_response(params, _harvest_entries(), f"{_base(request)}/oai",
+                               f"{rocrate.PUBLISHER}: published datasets",
+                               os.environ.get("FAIR_ADMIN_EMAIL", "fair-admin@example.org"))
+    return Response(xml, media_type="text/xml; charset=utf-8")
 
 
 @app.get("/id/{pid:path}")
