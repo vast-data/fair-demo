@@ -10,7 +10,7 @@ demo does today and what to add, roughly in priority order. The portal's Help, u
 | Where data goes | Names, header values and README text are sent to the model gateway. | Open data: fine. Embargoed, personal or export-controlled data: an on-site model, classification before any prompt, and redaction. |
 | Confidence | The model's own estimate; one real error (simulation read as collision data) was at 0.7. | Calibrate on a larger labelled set, per field and domain, before any automatic acceptance. |
 | Vocabularies | Keywords and domain are free text; CF standard names come from the files. | Map keywords and domains to GCMD, EDAM, PhySH (or the community's own) with identifiers, validated rather than generated. |
-| Provenance | The model name and the curation software are recorded. | Record the model version, prompt version and settings per proposal, so any record can be explained and re-created. |
+| Provenance | The model and the curation software are recorded; the model by its gateway name, which can be an internal alias, unless `FAIR_MODEL_LABEL` gives a public one. | Name the model publicly, by its own name and version, never a gateway alias. Record the prompt version and settings per proposal, so any record can be explained and re-created. |
 | Quality over time | An accuracy scorecard against ground truth, and F-UJI, run by hand. | Re-run both on every model or prompt change and on a schedule; alert on drops. |
 | Reviewers | A typed name. | Sign-in (SSO or ORCID), roles for curators and data owners, and every decision tied to a person. |
 | Facts mapping | Header-to-field rules written for six formats. | Review by a domain expert for each format and community convention in use. |
