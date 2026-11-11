@@ -473,7 +473,7 @@ def drafts():
 
 # ---------------------------------------------------------------- the data, queried in place
 
-QUERY_ROWS, EXPORT_ROWS = 10_000, 1_000_000   # JSON answers; CSV and Parquet downloads
+QUERY_ROWS, EXPORT_ROWS = 10_000, tables.EXPORT_ROWS   # JSON answers; CSV and Parquet downloads
 
 
 def _table_sink():

@@ -4,7 +4,7 @@ import awkward as ak
 import numpy as np
 import pytest
 
-from fairdemo import curate, extract, fairscore, rocrate
+from fairdemo import curate, extract, fairscore, rocrate, tables
 from tests import fixtures
 
 EXPECT = {"t.nc": "NetCDF", "t.h5": "HDF5", "t.fits": "FITS", "t.root": "ROOT", "t.vcf.gz": "VCF",
@@ -80,6 +80,30 @@ def test_rocrate_shape(tmp_path):
     assert ids["a.nc"]["sha256"] == rec["files"][0]["sha256"]
     json.dumps(crate)
 
+
+def test_published_provenance_names_the_public_model(tmp_path, monkeypatch):
+    """FAIR_CHAT_MODEL can be a gateway alias; FAIR_MODEL_LABEL is what published records say."""
+    rec = curate.curate(_folder(tmp_path), use_llm=False)
+    rec["curator"]["model"] = "gateway/alias"
+    monkeypatch.setattr(rocrate, "MODEL_LABEL", "Example-Model 1.0")
+    docs = rocrate.build(rec, "http://example.test/id", "s3://bucket/x")
+    ids = {g["@id"]: g for g in docs["ro-crate-metadata.json"]["@graph"]}
+    assert ids["#curator"]["description"] == "metadata proposals by Example-Model 1.0"
+    assert "Example-Model 1.0" in docs["ro-crate-preview.html"] and "gateway/alias" not in docs["ro-crate-preview.html"]
+
+
+
+def test_a_table_too_big_for_one_read_gets_no_croissant_record_set(tmp_path):
+    """A RecordSet must load the whole table; one over the download limit would stop short, so it has none."""
+    rec = curate.curate(_folder(tmp_path), use_llm=False)
+    t = {"table": "t", "location": "fair-db/data/t", "source": "a.nc", "source_sha256": "x",
+         "columns": [{"name": "sst", "type": "float"}]}
+    rec["tables"] = [t | {"rows": tables.EXPORT_ROWS}]
+    cr = rocrate.build(rec, "http://example.test/id", "s3://bucket/x")["croissant.json"]
+    assert [r["@id"] for r in cr["recordSet"]] == ["t"] and cr["isLiveDataset"] is True
+    rec["tables"] = [t | {"rows": tables.EXPORT_ROWS + 1}]
+    cr = rocrate.build(rec, "http://example.test/id", "s3://bucket/x")["croissant.json"]
+    assert "recordSet" not in cr and "isLiveDataset" not in cr
 
 def test_review_edit_wins(tmp_path):
     rec = curate.curate(_folder(tmp_path, documented=False), use_llm=False)

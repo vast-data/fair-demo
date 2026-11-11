@@ -17,7 +17,7 @@ import json
 import os
 import re
 
-from . import theme
+from . import tables, theme
 from .curate import accepted
 
 TEST_ARK_SHOULDER = "ark:/99999/fk4"
@@ -27,6 +27,9 @@ PUBLISHER = os.environ.get("FAIR_PUBLISHER", "FAIR demo repository on the VAST D
 # catalog-of-catalogs demo runs in local mode) names its own.
 DATASTORE = os.environ.get("FAIR_DATASTORE", "the VAST DataStore")
 TABLE_HOME = os.environ.get("FAIR_TABLE_HOME", "VAST DataBase")
+# The model named in published provenance. FAIR_CHAT_MODEL is the gateway's routing name, which can be an internal
+# alias; this is the name to show the world (for example the model's own name and version). Unset: the routing name.
+MODEL_LABEL = os.environ.get("FAIR_MODEL_LABEL", "")
 OPEN = {"CC0-1.0", "CC-BY-4.0", "CC-BY-3.0", "OGL-UK-3.0", "ODC-By-1.0", "PDDL-1.0", "CC-BY-SA-4.0"}
 
 # Publishing needs these accepted (RO-Crate itself requires a licence); without them a person must act first.
@@ -55,6 +58,26 @@ CROISSANT_CONTEXT = {
 }
 
 CROISSANT_TYPES = {"integer": "sc:Integer", "number": "sc:Float", "date": "sc:Date", "string": "sc:Text"}
+
+
+def _arrow_type(t: str) -> str:
+    """A VAST DB column's Arrow type (as str(pa.DataType)) as a Croissant dataType."""
+    t = t.lower()
+    if t.startswith(("int", "uint")):
+        return "sc:Integer"
+    if t.startswith(("float", "double", "halffloat", "decimal")):
+        return "sc:Float"
+    if t.startswith("bool"):
+        return "sc:Boolean"
+    if t.startswith("timestamp"):
+        return "sc:DateTime"
+    if t.startswith("date"):
+        return "sc:Date"
+    return "sc:Text"
+
+
+def _model(curator: dict) -> str | None:
+    return (MODEL_LABEL or curator.get("model")) if curator.get("model") else None
 
 
 def check_publishable(record: dict) -> None:
@@ -196,8 +219,8 @@ def build(record: dict, base_url: str, s3_prefix: str) -> dict:
 
     # Provenance of the metadata itself: which software and model proposed it, and who reviewed it.
     agent = {"@id": "#curator", "@type": "SoftwareApplication", "name": record["curator"]["software"]}
-    if record["curator"].get("model"):
-        agent["description"] = "metadata proposals by %s" % record["curator"]["model"]
+    if _model(record["curator"]):
+        agent["description"] = "metadata proposals by %s" % _model(record["curator"])
     graph.append(agent)
     graph.append({"@id": "#curation", "@type": "CreateAction", "name": "FAIR curation",
                   "agent": {"@id": "#curator"}, "result": {"@id": "ro-crate-metadata.json"},
@@ -243,6 +266,39 @@ def _croissant(record, a, pid, landing, license_url, people, s3_prefix) -> dict:
             {"@type": "cr:Field", "@id": "%s/%s" % (rs_id, c["name"]), "name": c["name"],
              "dataType": CROISSANT_TYPES.get(c.get("dtype"), "sc:Text"),
              "source": {"fileObject": {"@id": f["name"]}, "extract": {"column": c["name"]}}} for c in cols]})
+    # Every VAST DB table gets a RecordSet too, so formats ML loaders can't read (NetCDF, FITS, VCF, ROOT) can
+    # still be loaded record by record. Its FileObject is the table read in place, not a stored copy: the
+    # portal streams it from VAST DB as Parquet, and columns= and where= read only a slice.
+    covered = {f["name"] for f in record["files"] if f["media_type"] in ("text/csv", "application/vnd.apache.parquet")}
+    for t in record.get("tables") or []:
+        if t["source"] in covered:
+            continue   # the file itself already has a RecordSet
+        if t["rows"] > tables.EXPORT_ROWS:
+            continue   # one read would stop short of the whole table: read it in slices from the RO-Crate's link
+        fo = "table-%s" % t["table"]
+        doc["distribution"].append({
+            "@type": "cr:FileObject", "@id": fo, "name": fo,
+            "contentUrl": "%s/tables/%s?format=parquet" % (landing, t["table"]),
+            "encodingFormat": "application/x-parquet",
+            "description": "%s as a %s table, %s rows. Read in place: add &columns=a,b and &where=a>=1 "
+                           "to read only a slice." % (t["source"], TABLE_HOME, f"{t['rows']:,}")})
+        fields = []
+        for c in t["columns"]:
+            fd = {"@type": "cr:Field", "@id": "%s/%s" % (t["table"], c["name"]), "name": c["name"],
+                  "dataType": _arrow_type(str(c.get("type", ""))),
+                  "source": {"fileObject": {"@id": fo}, "extract": {"column": c["name"]}}}
+            desc = "; ".join(x for x in (c.get("description"), c.get("units") and "units: %s" % c["units"],
+                                         c.get("standard_name") and "CF standard name: %s" % c["standard_name"]) if x)
+            if desc:
+                fd["description"] = desc
+            fields.append(fd)
+        # A table read has no fixed bytes to hash (row order and the Parquet writer can vary while the data
+        # doesn't), and Croissant leaves checksums out only for live datasets. The source file keeps its
+        # SHA-256 above, and loaders still check it; the table names that file in the RO-Crate.
+        doc["isLiveDataset"] = True
+        doc["recordSet"].append({"@type": "cr:RecordSet", "@id": t["table"], "name": t["table"],
+                                 "description": "One record per row of %s (%s rows)" % (t["source"], f"{t['rows']:,}"),
+                                 "field": fields})
     if not doc["recordSet"]:
         del doc["recordSet"]
     return doc
@@ -310,7 +366,7 @@ def _preview(root, people, record, crate) -> str:
         "@type": "prov:Activity", "name": "FAIR curation",
         "prov:endedAtTime": record.get("reviewed") or record.get("generated"),
         "prov:wasAssociatedWith": [{"@type": "prov:SoftwareAgent", "name": cur.get("software")}]
-                                  + ([{"@type": "prov:SoftwareAgent", "name": cur["model"]}] if cur.get("model") else [])
+                                  + ([{"@type": "prov:SoftwareAgent", "name": _model(cur)}] if _model(cur) else [])
                                   + ([{"@type": "prov:Person", "name": record["reviewer"]}] if record.get("reviewer") else [])}
     jsonld["@id"] = root["url"]
     if people:

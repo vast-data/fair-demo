@@ -40,6 +40,7 @@ import pyarrow.compute as pc
 MAX_FILE_BYTES = int(os.environ.get("FAIR_TABLE_MAX_MB", "512")) * 10 ** 6   # per source file
 MAX_CELLS = int(os.environ.get("FAIR_TABLE_MAX_CELLS", "30000000"))           # rows x columns, per table
 MAX_ROWS = 5_000_000                                                         # per table
+EXPORT_ROWS = 1_000_000   # at most this many rows in one CSV or Parquet download of a table (the portal's /tables API)
 MAX_COLUMNS = 200          # as many as the profile lists variables (extract.MAX_VARIABLES)
 LOAD_SECONDS = int(os.environ.get("FAIR_TABLE_SECONDS", "300"))              # per dataset, all its tables
 TABULAR = {"CSV", "Parquet", "FITS", "NetCDF", "VCF", "ROOT"}
