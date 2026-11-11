@@ -110,6 +110,7 @@ RAW_NFS_TRIGGER, ESTATE_NFS_TRIGGER = "fair-raw-nfs-trigger", "fair-estate-nfs-t
 LITELLM_BASE_URL = need("LITELLM_BASE_URL")     # any OpenAI-compatible gateway
 CHAT_MODEL = need("FAIR_CHAT_MODEL")
 EMBED_MODEL = need("FAIR_EMBED_MODEL")          # 1024 dimensions: fairdemo/catalog.py DIM
+MODEL_LABEL = ENV.get("FAIR_MODEL_LABEL", "")   # the model's public name in published provenance
 HTTPS_PROXY = C("HTTPS_PROXY", "")              # empty: the cluster reaches the model gateway directly
 LANDING_BASE_URL = C("LANDING_BASE_URL")
 PORTAL_REPO, PORTAL_NODE_PORT = C("REGISTRY_PREFIX", TENANT) + "/fair-portal", int(ENV.get("FAIR_PORTAL_NODE_PORT", "30080"))
@@ -565,6 +566,8 @@ def step_pipeline():
            ("DOCS_BUCKET", DOCS_BUCKET), ("LANDING_BASE_URL", LANDING_BASE_URL),
            ("LITELLM_BASE_URL", LITELLM_BASE_URL), ("FAIR_CHAT_MODEL", CHAT_MODEL), ("FAIR_EMBED_MODEL", EMBED_MODEL),
            ("VMS_URL", VMS), ("VMS_TENANT", TENANT), ("NO_PROXY", f"{VMS_HOST},{PROTOCOLS_VIP},localhost")]
+    if MODEL_LABEL:
+        env.append(("FAIR_MODEL_LABEL", MODEL_LABEL))
     if HTTPS_PROXY:
         env += [("HTTPS_PROXY", HTTPS_PROXY), ("https_proxy", HTTPS_PROXY)]
     manifest = {

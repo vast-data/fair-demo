@@ -135,6 +135,12 @@ bytes and the snapshot that preserves them. Images (TIFF) stay as files.
 - **The curator chooses at publish.** *Also load as tables in VAST DataBase* is on by default for tabular
   files; a curator can publish as files only. The files stay where they are either way (`tables` in the
   review, `tables_wanted` in the record).
+- **In Croissant too.** Each table is a RecordSet whose fields carry the column's meaning, units and CF
+  standard name, read from `/id/<ark>/tables/<table>?format=parquet`, so `mlcroissant` loads NetCDF, FITS,
+  VCF and ROOT data record by record, not only CSV. The table is read from VAST DB when asked, not stored
+  as a copy, so it has no fixed bytes to hash: the document is marked `isLiveDataset` and the table has no
+  checksum, while every file keeps its SHA-256, which loaders still check. A table over 1,000,000 rows
+  (one download's limit) gets no RecordSet, since a single read would stop short: read it in slices.
 - **Six example questions per dataset** are made by the pipeline when the tables are loaded, each with its
   query already checked against the tables, and kept in the record (`questions`), so the portal shows them
   at once and clicking one runs without a second model call.

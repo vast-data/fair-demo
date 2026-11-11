@@ -194,6 +194,17 @@ def test_publish_loads_the_data_as_a_queryable_table(fn, tmp_path):
     dl = next(g for g in crate["@graph"] if g["@id"] == "#table-climate_sst")
     assert dl["@type"] == "DataDownload" and "/tables/climate_sst" in dl["contentUrl"]
     assert "Query it in place" in fn._clients["s3"].objects[("fair-raw", "climate/sst/ro-crate-preview.html")].decode()
+    # Croissant describes the table record by record, so ML loaders can read a NetCDF dataset too.
+    cr = json.loads(fn._clients["s3"].objects[("fair-raw", "climate/sst/croissant.json")])
+    fo = next(d for d in cr["distribution"] if d["@id"] == "table-climate_sst")
+    assert fo["contentUrl"].endswith("/tables/climate_sst?format=parquet") and fo["encodingFormat"] == "application/x-parquet"
+    assert cr["isLiveDataset"] is True and "sha256" not in fo
+    assert next(d for d in cr["distribution"] if d["@id"] == "a.nc")["sha256"] == rec["files"][0]["sha256"]
+    (rs,) = cr["recordSet"]
+    f = next(x for x in rs["field"] if x["name"] == "sst")
+    assert f["dataType"] == "sc:Float" and "units: degC" in f["description"]
+    assert f["source"] == {"fileObject": {"@id": "table-climate_sst"}, "extract": {"column": "sst"}}
+    assert next(x for x in rs["field"] if x["name"] == "time")["dataType"] == "sc:DateTime"
 
     out = tables.query(fn.table_sink, t, ["lat", "sst"], ["lat>=20"], 100, with_summary=True)
     assert out["rows"].num_rows == 30 and min(out["rows"]["lat"].to_pylist()) == 20
