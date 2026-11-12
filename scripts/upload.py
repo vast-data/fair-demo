@@ -51,7 +51,13 @@ def upload_file(portal, bucket, key, path: Path):
     call(f"{portal}/api/upload/complete", {"bucket": bucket, "key": key, "upload_id": start["upload_id"], "parts": parts})
 
 
-def upload(portal, folder, bucket="fair-raw", to=None, ready=True):
+def bucket_of(portal, which="raw"):
+    """The portal's landing (raw) or estate bucket, as it reports them: a deployment can prefix bucket names."""
+    return call(f"{portal}/api/info", method="GET").get(f"{which}_bucket") or f"fair-{which}"
+
+
+def upload(portal, folder, bucket=None, to=None, ready=True):
+    bucket = bucket or bucket_of(portal)
     dest = (to or folder).strip("/")
     files = sorted(p for p in (STAGED / folder).iterdir() if p.is_file())
     for p in files:
@@ -65,7 +71,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("folders", nargs="*", help="folders under data/staged (default: all)")
     ap.add_argument("--portal", default="http://localhost:8080")
-    ap.add_argument("--bucket", default="fair-raw")
+    ap.add_argument("--bucket", help="default: the portal's landing bucket (fair-raw, or with its prefix)")
     ap.add_argument("--to", help="destination prefix in the bucket (one folder only)")
     ap.add_argument("--no-ready", action="store_true", help="leave it for the backlog sweep")
     args = ap.parse_args()

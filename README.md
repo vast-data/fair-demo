@@ -100,7 +100,9 @@ Without a model gateway, `fairdemo curate FOLDER --no-llm` still produces a fact
 Follow **[docs/SETUP.md](docs/SETUP.md)**. In short: install DataEngine's services on a Kubernetes cluster
 you run (`vastde install`), fill in `.env` from `.env.example`, then run `uv run deploy/de.py up`. It
 creates everything in its own tenant, links your cluster as DataEngine compute, and deploys the function,
-pipeline and portal. Every step can be re-run, and `uv run deploy/de.py down` removes it all again.
+pipeline and portal. Every step can be re-run, and `uv run deploy/de.py down` removes it all again. No
+cluster admin login? It also runs in a developer tenant your platform team gives you (SETUP.md, *In a
+developer tenant*).
 
 Data arrives over S3 (uploads, or `scripts/upload.py` with chunked, retried parts) or **NFSv4** from HPC
 jobs: the landing and estate views serve S3 and NFS, and NFS4 DataEngine element triggers start curation on files

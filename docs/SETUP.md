@@ -30,12 +30,12 @@ Everything on the VAST cluster lives in one tenant (`fair` by default), so nothi
 
 | What | Details |
 |---|---|
-| VAST cluster | 5.5 or later; cluster admin login for VMS. A Query Engine VIP pool (role `QUERY_ENGINE_CNODE_GROUP`, with a domain name, which needs the cluster DNS service) for native vector search. VAST Catalog enabled for the backlog view. |
+| VAST cluster | 5.5 or later; cluster admin login for VMS, or a developer tenant (section 4, *In a developer tenant*). A Query Engine VIP pool (role `QUERY_ENGINE_CNODE_GROUP`, with a domain name, which needs the cluster DNS service) for native vector search. VAST Catalog enabled for the backlog view. |
 | Kubernetes cluster | One you administer, for DataEngine and the portal. Single-node RKE2 v1.34 is enough (tested: 64 cores, 47 GB). Its nodes must reach the VAST cluster's **data network** (the VIPs). VMS must reach its API server on 6443. |
 | Container registry | HTTPS with a **valid certificate**, reachable from the Kubernetes nodes and from your workstation for pushes. |
 | Model gateway | OpenAI-compatible, with a chat model that can return JSON and a 1024-dimension embedding model (tested: LiteLLM serving Qwen3-Embedding-0.6B). Reachable from the Kubernetes pods. On-site models keep the researchers' text on your network. |
 | Workstation | macOS or Linux with `uv`, `docker buildx` (builds `linux/amd64`), `skopeo`, `kubectl`, `python3`. Network access to VMS, the Kubernetes API, the registry and the portal. |
-| Addresses | Free VIPs on the data network: **2 or more** for S3 and VAST DB, and **one per CNode or more** for the Event Broker (dedicated). |
+| Addresses | Free VIPs on the data network: **2 or more** for S3 and VAST DB, and, for a dedicated Event Broker pool, **one per CNode or more** (optional: without it the Event Broker shares the protocols pool). In a developer tenant, the pool you were given. |
 
 Check the network from a throwaway pod before going further. Every line should print an HTTP status:
 
@@ -101,6 +101,41 @@ curl -sk -u admin:"$VMS_ADMIN_PASSWORD" https://<VMS>/api/vippools/ | python3 -c
 
 `.env` is git-ignored. Never paste its values into a chat or a ticket.
 
+### In a developer tenant
+
+You don't need a cluster admin login. If your platform team gives you a
+[developer tenant](https://docs.vastdata.com/develop/docs/dev-start-developer-sandbox), leave
+`VMS_ADMIN_PASSWORD` empty and `de.py` does everything as that tenant's admin. It checks that the tenant, its
+pool and its admin exist, creates the rest inside the tenant, and `down` leaves those three for the platform
+team. Ask them for what that page lists, plus the demo's extras:
+
+| Ask for | Why the demo needs it |
+|---|---|
+| A tenant with its own local provider | The bucket owner is a user in it; a tenant admin can't use the cluster's default provider. |
+| A tenant admin login | Every step runs as it, DataEngine's included. |
+| A Protocols VIP pool for the tenant | S3, VAST DB and the Event Broker all use it, so no separate broker pool is needed. |
+| A Query Engine pool, and VAST Catalog on | Vector search, and the backlog view. |
+
+Your own Kubernetes cluster, with DataEngine's services installed (section 3), and a container registry are
+linked by the tenant admin, as in the main path. Then set, instead of the cluster admin and the VIP ranges:
+
+```bash
+FAIR_TENANT=<your tenant>
+FAIR_TENANT_ADMIN_USER=<the tenant admin's login>
+FAIR_TENANT_ADMIN_PASSWORD=<its password>
+CLUSTER_PROTOCOLS_POOL=<the pool's name>
+CLUSTER_PROTOCOLS_VIPS=<the pool's addresses>
+FAIR_BUCKET_PREFIX=<your initials>-      # bucket names are unique across the cluster, not per tenant
+```
+
+and leave `CLUSTER_BROKER_VIPS` unset. Tested in a developer tenant on VAST 5.6, from the tenant through
+the triggers: a file written over S3 or NFSv4 reached the Event Broker's topic through the tenant's
+one Protocols pool.
+
+**On a shared cluster**, give each deployment its own `FAIR_BUCKET_PREFIX` whichever way you deploy: two
+deployments with the same bucket names collide even in different tenants. The prefix applies to every
+bucket, the Kafka view's too, and the function, portal and upload scripts follow it.
+
 ## 5. Deploy
 
 ```bash
@@ -110,7 +145,7 @@ uv run deploy/de.py status    # what exists
 
 | Step | What it creates (all in the tenant) |
 |---|---|
-| tenant, vippools, admin | the tenant, its two VIP pools, a role and a tenant admin |
+| tenant, vippools, admin | the tenant, its VIP pools (a separate Event Broker pool only with `CLUSTER_BROKER_VIPS`), a role and a tenant admin; in a developer tenant, a check that the platform team's exist |
 | s3_identity, s3_policy | an S3_NATIVE view policy, the bucket-owner user and key (kept in `deploy/.state.json`, git-ignored, mode 600), an identity policy (`s3:*` on the tenant's buckets, `s3:QueryEngine*` and `s3:Tabular*` for the Query Engine) |
 | views | `fair-kafka` (Event Broker), `fair-raw` and `fair-estate` (S3 + NFSv3 + NFSv4, delegations off), `fair-db` (VAST DB), `fair-docs` |
 | topics, dataengine | Kafka topics, then DataEngine enabled on the tenant with the Internal broker |
@@ -177,6 +212,7 @@ Snapshots taken at publication are kept. Delete them in VMS if you no longer nee
 |---|---|
 | New function code never runs | A pipeline update only takes effect when deployed. `de.py` deploys after every change; check the pod's image with `kubectl -n <ns> get pods -o jsonpath='{..image}'`. |
 | Trigger create: "internal error" | One suffix per `name_filters`. `de.py` uses a separate trigger for each. |
+| NFS4 trigger: `nfs_triggers_delegations_conflict` | Seen on 5.6 straight after the views are made; it was accepted when re-run. `de.py` carries on without it and says so: re-run `up trigger trigger`. |
 | NFS writes don't start curation | Use NFSv4 (`vers=4.1`). The view needs S3 and NFS4 with delegations off, and a trigger with source `NFS4`. |
 | `Permission denied` on the NFS mount | Root is squashed; write as the bucket owner's uid (e.g. `setpriv --reuid=8300 --regid=8300 --clear-groups`). |
 | VIP pool: "domain name … DNS is not configured" | A Query Engine pool needs a domain name, which needs the cluster DNS service (`/api/dns/`) first. |

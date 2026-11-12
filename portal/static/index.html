@@ -1144,6 +1144,7 @@ async function api(path, opts) { const r = await fetch(path, opts); if (!r.ok) t
 
 let runningOn = "";   // "the VAST cluster" or "this machine", from /api/info
 let tableHome = "VAST DataBase";   // where this site keeps the data as tables, from /api/info (a partner site names its own)
+let rawBucket = "fair-raw";   // the landing bucket, from /api/info (a deployment can prefix its bucket names)
 async function refresh() {
   const d = await api("/api/datasets");
   all = d.datasets;
@@ -1659,11 +1660,11 @@ async function uploadBatch(files, folder) {
   const json = (url, body) => api(url, {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(body)});
   for (const [i, f] of files.entries()) {
     const key = `${folder}/${f.name}`;
-    const st = await json("/api/upload/start", {bucket: "fair-raw", key});
+    const st = await json("/api/upload/start", {bucket: rawBucket, key});
     const parts = [];
     for (let n = 1, off = 0; off < f.size || n === 1; n++, off += st.part_size) {
       drop.textContent = `Uploading ${f.name} (${i + 1}/${files.length}) · ${Math.min(100, Math.round(off / Math.max(f.size, 1) * 100))}%`;
-      const q = new URLSearchParams({bucket: "fair-raw", key, upload_id: st.upload_id, n});
+      const q = new URLSearchParams({bucket: rawBucket, key, upload_id: st.upload_id, n});
       let res, tries = 0;
       while (true) {
         try { res = await api(`/api/upload/part?${q}`, {method: "PUT", body: f.slice(off, off + st.part_size)}); break; }
@@ -1672,9 +1673,9 @@ async function uploadBatch(files, folder) {
       parts.push(res);
       if (off + st.part_size >= f.size) break;
     }
-    await json("/api/upload/complete", {bucket: "fair-raw", key, upload_id: st.upload_id, parts});
+    await json("/api/upload/complete", {bucket: rawBucket, key, upload_id: st.upload_id, parts});
   }
-  await json("/api/upload/ready", {bucket: "fair-raw", folder});
+  await json("/api/upload/ready", {bucket: rawBucket, folder});
   drop.textContent = `Uploaded ${files.length} file(s) to ${folder}; the pipeline is curating it.`;
 }
 
@@ -1970,7 +1971,7 @@ from ibis import _
 session = vastdb.connect(endpoint="http://<your VAST S3 endpoint>",
                          access="<access key>", secret="<secret key>")
 with session.transaction() as tx:
-    table = tx.bucket("fair-db").schema("data").table("${t.table}")
+    table = tx.bucket("${t.location.split("/")[0]}").schema("${t.location.split("/")[1]}").table("${t.table}")
     rows = table.select(columns=${JSON.stringify(cols)}${num ? `,\n                        predicate=_["${num.name}"] >= ${num.min}` : ""}).read_all()
 print(rows.to_pandas().head())`;
   const sql = `SELECT ${cols.map(c => `"${c}"`).join(", ")}
@@ -2015,6 +2016,7 @@ document.addEventListener("click", e => { const a = e.target.closest("[data-find
 api("/api/info").then(i => {
   if (i.site) { const sn = $("#sitename"); sn.textContent = i.site; sn.hidden = false; document.title = `FAIR data · ${i.site}`; }
   if (i.table_home) tableHome = i.table_home;
+  if (i.raw_bucket) rawBucket = i.raw_bucket;
   runningOn = i.mode === "local" ? "this machine (local mode)" : "the VAST cluster";
   $("#log-mode").textContent = i.mode === "local" ? "local pipeline · " + i.model : "VAST cluster · " + i.model;
   $("#pipe-line").textContent = $("#pipe-line").textContent.replace(/^Pipeline/, `Pipeline on ${runningOn}`);

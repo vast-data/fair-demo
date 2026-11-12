@@ -131,3 +131,16 @@ def test_endpoints_serve_only_published_records(tmp_path, monkeypatch):
     # OAI-PMH allows POST with form-encoded arguments too
     post = c.post("/oai", data={"verb": "Identify"})
     assert ET.fromstring(post.text).find(f"{OAI}Identify/{OAI}baseURL").text == "http://testserver/oai"
+
+
+def test_a_prefixed_deployment_names_its_own_buckets():
+    """On a shared cluster each deployment can prefix its bucket names (FAIR_BUCKET_PREFIX in deploy/de.py,
+    which passes the names on): the portal uploads to, and reports, the prefixed ones."""
+    import os
+    import subprocess
+    import sys
+    from pathlib import Path
+    env = dict(os.environ, RAW_BUCKET="jb-fair-raw", ESTATE_BUCKET="jb-fair-estate")
+    out = subprocess.run([sys.executable, "-c", "from portal import store; print(store.RAW, store.ESTATE, *store.BUCKETS)"],
+                         env=env, capture_output=True, text=True, cwd=Path(__file__).resolve().parents[1])
+    assert out.stdout.split() == ["jb-fair-raw", "jb-fair-estate"] * 2, out.stderr[-500:]
