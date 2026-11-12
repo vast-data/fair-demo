@@ -10,12 +10,12 @@ demo does today and what to add, roughly in priority order. The portal's Help, u
 | Where data goes | Names, header values and README text are sent to the model gateway. | Open data: fine. Embargoed, personal or export-controlled data: an on-site model, classification before any prompt, and redaction. |
 | Confidence | The model's own estimate; one real error (simulation read as collision data) was at 0.7. | Calibrate on a larger labelled set, per field and domain, before any automatic acceptance. |
 | Vocabularies | Keywords and domain are free text; CF standard names come from the files. | Map keywords and domains to GCMD, EDAM, PhySH (or the community's own) with identifiers, validated rather than generated. |
-| Provenance | The model name and the curation software are recorded. | Record the model version, prompt version and settings per proposal, so any record can be explained and re-created. |
+| Provenance | The model and the curation software are recorded; the model by its gateway name, which can be an internal alias, unless `FAIR_MODEL_LABEL` gives a public one. | A settings screen where an admin picks the model from those the gateway offers and gives its public name and version, kept with who changed it and when; records publish that name, never a gateway alias. Check what the alias points to on save and on a schedule, since a gateway can repoint it. Record the prompt version and settings per proposal, so any record can be explained and re-created. |
 | Quality over time | An accuracy scorecard against ground truth, and F-UJI, run by hand. | Re-run both on every model or prompt change and on a schedule; alert on drops. |
 | Reviewers | A typed name. | Sign-in (SSO or ORCID), roles for curators and data owners, and every decision tied to a person. |
 | Facts mapping | Header-to-field rules written for six formats. | Review by a domain expert for each format and community convention in use. |
 | Identifiers | Test ARKs (ark:/99999/fk4…) resolved by the portal. | DataCite DOIs (or the institution's PID service), with landing pages on a stable public host. |
-| Access | Open datasets; files served from S3 through the portal. | Restricted data: access conditions in the record, authorisation at download, and metadata-only publication where needed. |
+| Access | Open datasets; files and tables served through the portal, whose links work only on the cluster's network. | Metadata public (landing pages, RO-Crate, Croissant, harvest feeds); data and query endpoints internal. Each record states its access conditions and links to a request: the data owner approves, and the platform issues a VAST identity scoped by an identity policy to that prefix or those tables (with row and column rules where needed) and sends the S3, VAST DB or ADBC endpoint details. Open data can skip the request. |
 | Preservation | A VAST snapshot per publication, not locked. | Locked (indestructible) snapshots or replication, with a retention policy. |
 | Scale | The function downloads whole files; search uses VAST Vector Search in VAST DataBase. | Header-only or ranged reads for large files. |
 | Operations | One portal replica; a personal model key. | A service-account key, more than one replica, monitoring of the pipeline, dead-letter topic and Catalog runs, and backups of fair-db. |
@@ -32,6 +32,11 @@ demo does today and what to add, roughly in priority order. The portal's Help, u
   `data/ground_truth.json` and `scripts/scorecard.py`, and grow the set per domain.
 - **Known issues** are in `docs/known-issues.md`. One matters for anyone scripting VMS: identity policies
   are attached per tenant (`users/<id>/tenant_data/`), or the Query Engine refuses every query.
+- **Access between institutions** is a solution architecture of its own: networking, federated identity
+  (eduGAIN or OIDC, so a partner's users sign in as themselves), data-sharing agreements, and whether a
+  query reaches across sites or the data is copied. The demo shows the part that crosses sites today, the
+  metadata: harvesting and one search across catalogs. Its six datasets are all openly licensed, so it
+  doesn't show the request-and-approve flow.
 - **A catalog of catalogs** needs no change to curation: the events would come from the publish step
   (`fair.records` already holds every version, with who made it), and the central catalog runs the same
   search code over the rows it receives. The demo already runs the Event Broker, for its triggers; it does
