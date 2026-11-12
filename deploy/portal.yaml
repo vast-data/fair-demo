@@ -37,7 +37,9 @@ spec:
             - {name: FAIR_STORE, value: cluster}
             - {name: FAIR_IN_CLUSTER, value: "1"}
             - {name: FAIR_S3_ENDPOINT, value: "${S3_ENDPOINT}"}
-            - {name: DB_BUCKET, value: fair-db}
+            - {name: RAW_BUCKET, value: "${RAW_BUCKET}"}
+            - {name: ESTATE_BUCKET, value: "${ESTATE_BUCKET}"}
+            - {name: DB_BUCKET, value: "${DB_BUCKET}"}
             - {name: DB_SCHEMA, value: fair}
             - {name: LITELLM_BASE_URL, value: "${LITELLM_BASE_URL}"}
             - {name: FAIR_CHAT_MODEL, value: "${CHAT_MODEL}"}

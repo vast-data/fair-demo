@@ -8,7 +8,7 @@ for every target.
 """
 import argparse
 
-from upload import upload
+from upload import bucket_of, upload
 
 ESTATE = {
     "projects/ocean-heat/oisst-2024-09-01": "climate/oisst-v2.1-2024-09-01",
@@ -24,10 +24,11 @@ ESTATE = {
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--portal", default="http://localhost:8080")
-    ap.add_argument("--bucket", default="fair-estate")
+    ap.add_argument("--bucket", help="default: the portal's estate bucket (fair-estate, or with its prefix)")
     args = ap.parse_args()
+    bucket = args.bucket or bucket_of(args.portal.rstrip("/"), "estate")
     for dest, src in ESTATE.items():
-        upload(args.portal.rstrip("/"), src, args.bucket, dest, ready=False)
+        upload(args.portal.rstrip("/"), src, bucket, dest, ready=False)
 
 
 if __name__ == "__main__":

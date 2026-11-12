@@ -15,8 +15,13 @@ Kubernetes cluster you run, linked to the tenant as external compute (see docs/S
     -> fair-db/fair/{files,records,search,variables}, RO-Crate + Croissant back into the dataset folder,
        landing text into s3://fair-docs
 
-Every site-specific value comes from .env (see .env.example). Every step is idempotent. Keys and passwords
-created on the way are kept in the state file (git-ignored, mode 600).
+Every site-specific value comes from .env (see .env.example), or the file FAIR_ENV_FILE names; a variable in
+the environment overrides the file. Every step is idempotent. Keys and passwords created on the way are kept in
+the state file (git-ignored, mode 600).
+
+With a cluster admin login (VMS_ADMIN_PASSWORD) it creates the tenant, its VIP pools and its admin. Without
+one it works in a developer tenant your platform team made: give the tenant, its admin login and its
+protocols pool, and it creates the rest as the tenant admin (docs/SETUP.md, "In a developer tenant").
 """
 
 import json
@@ -37,31 +42,34 @@ HERE = Path(__file__).resolve().parent
 ROOT = HERE.parent
 
 
+ENV_FILE = Path(os.environ.get("FAIR_ENV_FILE") or ROOT / ".env")
+
+
 def _dotenv():
     out = {}
-    for line in (ROOT / ".env").read_text().splitlines() if (ROOT / ".env").exists() else []:
+    for line in ENV_FILE.read_text().splitlines() if ENV_FILE.exists() else []:
         k, sep, v = line.partition("=")
         if sep and not k.startswith("#"):
             out[k.strip()] = v.split("#", 1)[0].strip() if " #" in v else v.strip()
     return out
 
 
-ENV = _dotenv()
+ENV = _dotenv() | {k: v for k, v in os.environ.items() if k.startswith(("FAIR_", "CLUSTER_", "VMS_", "LITELLM_"))}
 
 
 def need(key):
     """A required setting: the environment, then .env."""
-    v = os.environ.get(key) or ENV.get(key)
+    v = ENV.get(key)
     if not v:
-        raise SystemExit(f"set {key} in .env (see .env.example)")
+        raise SystemExit(f"set {key} in {ENV_FILE.name} (see .env.example)")
     return v
 
 
 def C(key, default=None):
     """A CLUSTER_* setting: the environment, then .env, then the default; required if there is none."""
-    v = os.environ.get("CLUSTER_" + key) or ENV.get("CLUSTER_" + key) or default
+    v = ENV.get("CLUSTER_" + key) or default
     if v is None:
-        raise SystemExit(f"set CLUSTER_{key} in .env (see .env.example)")
+        raise SystemExit(f"set CLUSTER_{key} in {ENV_FILE.name} (see .env.example)")
     return v
 
 
@@ -73,25 +81,37 @@ def _range(v):
 VMS_HOST = C("VMS").removeprefix("https://").rstrip("/")
 VMS = f"https://{VMS_HOST}"
 STATE = HERE / C("STATE_FILE", ".state.json")
-ADMIN = (ENV.get("VMS_ADMIN_USER", "admin"), need("VMS_ADMIN_PASSWORD"))
+# A cluster admin login, or none: then the demo goes in a developer tenant, which the platform team made with
+# its admin and a protocols pool, and every VMS call is made as that tenant admin.
+ADMIN = (ENV.get("VMS_ADMIN_USER", "admin"), ENV["VMS_ADMIN_PASSWORD"]) if ENV.get("VMS_ADMIN_PASSWORD") else None
+DEV_TENANT = ADMIN is None
 
 TENANT = ENV.get("FAIR_TENANT", "fair")
-TENANT_ADMIN = TENANT + "-admin"
+TENANT_ADMIN = ENV.get("FAIR_TENANT_ADMIN_USER") or TENANT + "-admin"
+if DEV_TENANT and not ENV.get("FAIR_TENANT_ADMIN_PASSWORD"):
+    raise SystemExit(f"set VMS_ADMIN_PASSWORD (a cluster admin) in {ENV_FILE.name}, or, in a developer tenant, "
+                     "FAIR_TENANT, FAIR_TENANT_ADMIN_USER and FAIR_TENANT_ADMIN_PASSWORD (see .env.example)")
 ROLE = "fair-role"
 S3_POLICY = "fair-s3"
 S3_IDENTITY_POLICY = "fair-owner-s3"
 BUCKET_OWNER, BUCKET_OWNER_UID = "fair-owner", 8300
-PROTOCOLS_POOL, BROKER_POOL = "fair-protocols", "fair-broker"   # S3 + DB; Kafka
-KAFKA_VIEW = "fair-kafka"
-RAW_BUCKET, DB_BUCKET, DOCS_BUCKET = "fair-raw", "fair-db", "fair-docs"
-ESTATE_BUCKET = "fair-estate"   # data already on the system: curated in place by the backlog sweep
+# Bucket names are unique across the whole cluster, not per tenant: on a shared cluster give each deployment
+# its own prefix (e.g. "jb-"), or two deployments of the demo collide. The Kafka view is a bucket too.
+BUCKET_PREFIX = ENV.get("FAIR_BUCKET_PREFIX", "")
+KAFKA_VIEW = BUCKET_PREFIX + "fair-kafka"
+RAW_BUCKET, DB_BUCKET, DOCS_BUCKET = (BUCKET_PREFIX + b for b in ("fair-raw", "fair-db", "fair-docs"))
+ESTATE_BUCKET = BUCKET_PREFIX + "fair-estate"   # data already on the system: curated in place by the backlog sweep
 DB_SCHEMA = "fair"
 DEFAULT_TOPIC, DLT_TOPIC, EVENTS_TOPIC = "default", "default-dlt", "fair-events"
 # The DataEngine SDK and runtime wheels come from VAST's published builder image, matching your DataEngine stack.
 VAST_BUILDER = C("VAST_BUILDER", "vastdataorg/vast-builder:v5.5.0-sp2")
-# VIPs on the cluster's data network that no pool uses (check every pool and ping them first). The Kafka
-# pool is dedicated to the Event Broker and needs at least one IP per CNode.
-POOL_RANGES = {PROTOCOLS_POOL: _range(C("PROTOCOLS_VIPS")), BROKER_POOL: _range(C("BROKER_VIPS"))}
+# VIPs on the cluster's data network that no pool uses (check every pool and ping them first). A separate
+# Kafka pool, dedicated to the Event Broker, needs at least one IP per CNode; without CLUSTER_BROKER_VIPS the
+# Kafka view uses the protocols pool, as in a developer tenant, where the platform team made that pool
+# (CLUSTER_PROTOCOLS_POOL names it, CLUSTER_PROTOCOLS_VIPS gives its addresses).
+PROTOCOLS_POOL = C("PROTOCOLS_POOL", "fair-protocols")
+BROKER_POOL = "fair-broker" if C("BROKER_VIPS", "") else None
+POOL_RANGES = {PROTOCOLS_POOL: _range(C("PROTOCOLS_VIPS"))} | ({BROKER_POOL: _range(C("BROKER_VIPS"))} if BROKER_POOL else {})
 PROTOCOLS_VIP = POOL_RANGES[PROTOCOLS_POOL][0]
 POOL_CIDR = int(C("VIP_CIDR", "24"))
 S3_ENDPOINT = C("S3_ENDPOINT", f"http://{PROTOCOLS_VIP}")
@@ -147,8 +167,20 @@ def tenant_admin_pw():
     return pw
 
 
+_tenant_token = {}
+
+
+def auth():
+    """How a VMS call authenticates: as the cluster admin, or, in a developer tenant, as its tenant admin."""
+    if ADMIN:
+        return {"auth": ADMIN}
+    if time.time() - _tenant_token.get("at", 0) > 600:   # a fresh token every 10 minutes, well inside its life
+        _tenant_token.update(headers=DE().h, at=time.time())
+    return {"headers": _tenant_token["headers"]}
+
+
 def vms(method, path, **kw):
-    r = requests.request(method, f"{VMS}/api/{path.lstrip('/')}", auth=ADMIN, verify=False, timeout=60, **kw)
+    r = requests.request(method, f"{VMS}/api/{path.lstrip('/')}", verify=False, timeout=60, **auth(), **kw)
     if not r.ok:
         raise SystemExit(f"VMS {method} {path} -> HTTP {r.status_code}: {r.text[:800]}")
     return r.json() if r.text else None
@@ -218,6 +250,8 @@ def tenant_id():
 
 def step_tenant():
     t = vms_one("tenants/", name=TENANT)
+    if not t and DEV_TENANT:
+        raise SystemExit(f"tenant {TENANT} not visible to {TENANT_ADMIN}: check FAIR_TENANT with your platform team")
     if not t:
         t = vms("POST", "tenants/", json={"name": TENANT})
     log(f"tenant {TENANT}: id {t['id']}")
@@ -227,6 +261,9 @@ def step_vippools():
     tid = tenant_id()
     for name, (first, last) in POOL_RANGES.items():
         p = vms_one("vippools/", name=name)
+        if not p and DEV_TENANT:
+            raise SystemExit(f"VIP pool {name} not visible in tenant {TENANT}: set CLUSTER_PROTOCOLS_POOL to the "
+                             "pool your platform team made for it")
         if not p:
             p = vms("POST", "vippools/", json={"name": name, "role": "PROTOCOLS", "subnet_cidr": POOL_CIDR,
                                                "ip_ranges": [[first, last]], "port_membership": "ALL", "tenant_id": tid})
@@ -234,6 +271,10 @@ def step_vippools():
 
 
 def step_admin():
+    if DEV_TENANT:
+        DE()
+        log(f"tenant admin {TENANT_ADMIN}: ok (made by the platform team; tenant token issued)")
+        return
     tid = tenant_id()
     role = vms_one("roles/", name=ROLE)
     if not role:
@@ -264,7 +305,7 @@ def step_s3_identity():
     # VMS doesn't list the keys of a user in a non-default tenant, so an empty list doesn't mean the key
     # in the state file is gone: keep it. Make one only when there is none, or VMS lists others but not it.
     if not st.get("access_key") or (have and st["access_key"] not in have):
-        r = requests.post(f"{VMS}/api/users/{u['id']}/access_keys/", auth=ADMIN, verify=False, timeout=60,
+        r = requests.post(f"{VMS}/api/users/{u['id']}/access_keys/", verify=False, **auth(), timeout=60,
                           json={"tenant_id": tid})
         if r.status_code == 400 and "key_limit_reached" in r.text:
             raise SystemExit(f"{BUCKET_OWNER} already has the maximum number of S3 keys and none is in "
@@ -306,9 +347,9 @@ def step_s3_policy():
 def step_views():
     tid = tenant_id()
     policy = vms_one("viewpolicies/", name=S3_POLICY)
-    broker_pool = vms_one("vippools/", name=BROKER_POOL)
+    kafka_pool = vms_one("vippools/", name=BROKER_POOL or PROTOCOLS_POOL)
     specs = [
-        (f"/{KAFKA_VIEW}", KAFKA_VIEW, ["KAFKA", "S3", "DATABASE"], {"kafka_vip_pools": [broker_pool["id"]]}),
+        (f"/{KAFKA_VIEW}", KAFKA_VIEW, ["KAFKA", "S3", "DATABASE"], {"kafka_vip_pools": [kafka_pool["id"]]}),
         # Landing bucket: S3 for uploads, NFS for HPC jobs writing results straight in. Element triggers see
         # NFSv4 writes (KB: Provisioning Source Views for Element Type Triggers) when the view has S3 and NFS4
         # and NFSv4 delegations are off.
@@ -323,10 +364,10 @@ def step_views():
         if not v:
             body = {"path": path, "bucket": bucket, "bucket_owner": BUCKET_OWNER, "policy_id": policy["id"],
                     "tenant_id": tid, "protocols": protocols, "create_dir": True, **extra}
-            r = requests.post(f"{VMS}/api/views/", auth=ADMIN, verify=False, timeout=60, json=body)
+            r = requests.post(f"{VMS}/api/views/", verify=False, **auth(), timeout=60, json=body)
             if not r.ok and "NFS" in protocols:
                 log(f"view {path} with NFS refused ({r.text[:200]}); creating it S3-only")
-                r = requests.post(f"{VMS}/api/views/", auth=ADMIN, verify=False, timeout=60,
+                r = requests.post(f"{VMS}/api/views/", verify=False, **auth(), timeout=60,
                                   json=body | {"protocols": [x for x in protocols if x != "NFS"]})
             if not r.ok:
                 raise SystemExit(f"VMS POST views/ {path} -> HTTP {r.status_code}: {r.text[:800]}")
@@ -337,7 +378,7 @@ def step_views():
             if set(protocols) - set(v["protocols"]):
                 change["protocols"] = sorted(set(v["protocols"]) | set(protocols))
             if change:
-                r = requests.patch(f"{VMS}/api/views/{v['id']}/", auth=ADMIN, verify=False, timeout=60, json=change)
+                r = requests.patch(f"{VMS}/api/views/{v['id']}/", verify=False, **auth(), timeout=60, json=change)
                 if r.ok:
                     v = r.json()
                 else:
@@ -348,7 +389,7 @@ def step_views():
 def step_topics():
     tid = tenant_id()
     for name in (DEFAULT_TOPIC, DLT_TOPIC, EVENTS_TOPIC):
-        r = requests.post(f"{VMS}/api/topics/", auth=ADMIN, verify=False, timeout=60,
+        r = requests.post(f"{VMS}/api/topics/", verify=False, **auth(), timeout=60,
                           json={"database_name": KAFKA_VIEW, "schema_name": "kafka_topics", "name": name,
                                 "topic_partitions": 8, "retention_ms": 604800000, "tenant_id": tid})
         if not r.ok and "ALREADY_EXISTS" not in r.text.upper():
@@ -524,10 +565,19 @@ def step_trigger():
                                           (ESTATE_NFS_TRIGGER, ESTATE_BUCKET, {"name_filters": {"suffixes": ["_READY"]}}, "NFS4")):
         tr = next((t for t in de.list("/triggers/all") if t.get("name") == name), None)
         if not tr:
-            tr = de.req("POST", "/triggers/element", json={
-                "name": name, "broker": {"type": "Internal", "name": KAFKA_VIEW}, "topic_name": EVENTS_TOPIC,
-                "source_types": [source],
-                "config": {"events": ["ObjectCreated:*"], "source_bucket_name": bucket, **filters}})
+            try:
+                tr = de.req("POST", "/triggers/element", json={
+                    "name": name, "broker": {"type": "Internal", "name": KAFKA_VIEW}, "topic_name": EVENTS_TOPIC,
+                    "source_types": [source],
+                    "config": {"events": ["ObjectCreated:*"], "source_bucket_name": bucket, **filters}})
+            except SystemExit as e:
+                # Seen on 5.6 just after the views are made ("nfs_triggers_delegations_conflict"), and accepted
+                # when re-run. Without the NFSv4 triggers S3 writes are still curated; NFS writes wait for the
+                # backlog sweep.
+                if source != "NFS4" or "delegations" not in str(e):
+                    raise
+                log(f"trigger {name}: refused for now ({str(e)[:160]}); re-run: ./deploy/de.py up trigger trigger")
+                continue
         log(f"trigger {name}: {tr['vrn']} topic {tr.get('topic') or tr.get('topic_name')} ({tr.get('status')})")
 
 
@@ -562,7 +612,7 @@ def step_pipeline():
     fn = de.find("/functions", FUNCTION)
     rev = latest_revision(de, fn)["revision_number"]
     p = de.find("/pipelines", PIPELINE)
-    env = [("vast-s3-endpoint-url", S3_ENDPOINT), ("DB_BUCKET", DB_BUCKET), ("DB_SCHEMA", DB_SCHEMA),
+    env = [("vast-s3-endpoint-url", S3_ENDPOINT), ("RAW_BUCKET", RAW_BUCKET), ("DB_BUCKET", DB_BUCKET), ("DB_SCHEMA", DB_SCHEMA),
            ("DOCS_BUCKET", DOCS_BUCKET), ("LANDING_BASE_URL", LANDING_BASE_URL),
            ("LITELLM_BASE_URL", LITELLM_BASE_URL), ("FAIR_CHAT_MODEL", CHAT_MODEL), ("FAIR_EMBED_MODEL", EMBED_MODEL),
            ("VMS_URL", VMS), ("VMS_TENANT", TENANT), ("NO_PROXY", f"{VMS_HOST},{PROTOCOLS_VIP},localhost")]
@@ -669,6 +719,7 @@ def step_portal():
                             capture_output=True, text=True, check=True).stdout
     manifest = (HERE / "portal.yaml").read_text()
     for k, v in {"IMAGE": st["portal_image"], "S3_ENDPOINT": S3_ENDPOINT, "PROTOCOLS_VIP": PROTOCOLS_VIP,
+                 "RAW_BUCKET": RAW_BUCKET, "ESTATE_BUCKET": ESTATE_BUCKET, "DB_BUCKET": DB_BUCKET,
                  "VIP_NAME": "ipv4-" + PROTOCOLS_VIP.replace(".", "-"), "LITELLM_BASE_URL": LITELLM_BASE_URL,
                  "CHAT_MODEL": CHAT_MODEL, "EMBED_MODEL": EMBED_MODEL, "HTTPS_PROXY": HTTPS_PROXY,
                  "VMS_URL": VMS, "VMS_HOST": VMS_HOST, "VMS_TENANT": TENANT, "VMS_USER": TENANT_ADMIN,
@@ -747,14 +798,15 @@ def cmd_down():
             v = vms_one("views/", path=path, tenant_id=tid)
             if v:
                 tryit(f"view {path}", lambda v=v: vms("DELETE", f"views/{v['id']}/"))
+    # In a developer tenant the tenant, its admin and its pool are the platform team's: they stay.
+    platform = () if DEV_TENANT else (("managers/", "username", TENANT_ADMIN), ("roles/", "name", ROLE),
+                                       ("vippools/", "name", PROTOCOLS_POOL), ("vippools/", "name", BROKER_POOL))
     for path, key, name in (("s3policies/", "name", S3_IDENTITY_POLICY), ("users/", "name", BUCKET_OWNER),
-                            ("managers/", "username", TENANT_ADMIN), ("roles/", "name", ROLE),
-                            ("viewpolicies/", "name", S3_POLICY), ("vippools/", "name", PROTOCOLS_POOL),
-                            ("vippools/", "name", BROKER_POOL)):
-        o = vms_one(path, **{key: name})
+                            ("viewpolicies/", "name", S3_POLICY), *platform):
+        o = name and vms_one(path, **{key: name})
         if o:
             tryit(f"{path}{name}", lambda o=o, path=path: vms("DELETE", f"{path}{o['id']}/"))
-    if tid:
+    if tid and not DEV_TENANT:
         tryit(f"tenant {TENANT}", lambda: vms("DELETE", f"tenants/{tid}/"))
     for ns in ("fair-portal", "fair-portal-b", EXTERNAL_K8S["namespace"]):
         tryit(f"namespace {ns}", lambda ns=ns: _kubectl("delete", "namespace", ns, "--ignore-not-found"))

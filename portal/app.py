@@ -83,7 +83,8 @@ def info():
             "peers": [p["name"] for p in federation.peers()],
             "search": store.db is not None or store.mode == "local", "in_cluster": store.db is not None,
             "embed_model": llm.EMBED_MODEL or "(not set)", "embed_dims": catalog.DIM,
-            "embed_max_chars": catalog.MAX_TEXT}
+            "embed_max_chars": catalog.MAX_TEXT, "raw_bucket": stores.RAW,
+            "estate_bucket": stores.ESTATE}
 
 
 @app.get("/api/models")

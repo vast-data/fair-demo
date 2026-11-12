@@ -29,7 +29,7 @@ def drafts_from_cluster() -> dict:
         raise SystemExit("set FAIR_S3_ENDPOINT, or use --portal or --local")
     s = vastdb.connect(endpoint=endpoint, access=st["access_key"], secret=st["secret_key"])
     with s.transaction() as tx:
-        t = tx.bucket("fair-db").schema("fair").table("records")
+        t = tx.bucket(os.environ.get("DB_BUCKET", "fair-db")).schema("fair").table("records")
         rows = t.select(columns=["folder", "version", "actor", "record"],
                         config=QueryConfig(data_endpoints=[endpoint])).read_all().to_pylist()
     latest = {}

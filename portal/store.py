@@ -18,7 +18,7 @@ from collections import deque
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-RAW = "fair-raw"
+RAW = os.environ.get("RAW_BUCKET", "fair-raw")
 ESTATE = os.environ.get("ESTATE_BUCKET", "fair-estate")
 # Datasets in the landing bucket are keyed by their prefix; anywhere else by <bucket>/<prefix>
 # (function/main.py dataset_id). A key starting with another bucket's name resolves to that bucket.
