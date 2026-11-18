@@ -53,8 +53,7 @@ The metadata belongs to the data, not to the platform:
   schema.org JSON-LD and PROV-O. They stay readable, and valid, if the data ever moves off VAST.
 - FAIR is measured two ways: the built-in RDA-based checks, and **F-UJI**, an independent, open-source
   assessor.
-- The curation logic (`fairdemo/`) is plain Python with open-source dependencies. It runs anywhere,
-  including on a laptop with no cluster ([below](#run-it-without-a-cluster)).
+- The curation logic (`fairdemo/`) is plain Python with open-source dependencies.
 - What VAST adds is the platform around it: event-driven processing where the data lands (DataEngine),
   search by meaning and by variable (VAST Vector Search in VAST DataBase), finding the data nobody has described
   (VAST Catalog), and preserving what was published (snapshots). The "How it works" page in the portal's
@@ -78,22 +77,6 @@ a README and CITATION.cff, and four domains also have a *dark* copy: the same by
 
 Before → after publishing: documented folders score 24–52 → 72–92; a dark file scores 8 → 76 once a
 person adds the licence and creator. `data/SOURCES.md` gives the attribution each source asks for.
-
-## Run it without a cluster
-
-The same function code runs in-process, over folders on disk (`data/buckets/`). Everything except
-VAST-specific features (Catalog, snapshots, VAST Vector Search) works this way.
-
-```bash
-uv venv --python 3.12 && uv pip install -e '.[dev,portal,function]'
-.venv/bin/python -m pytest -q        # offline, no cluster and no model needed
-python3 scripts/fetch_data.py        # the six datasets, checked against data/sources.json, then staged
-cp .env.example .env                 # set LITELLM_BASE_URL, LITELLM_API_KEY and the two model names
-FAIR_STORE=local .venv/bin/uvicorn portal.app:app --port 8080
-python3 scripts/upload.py            # uploads every folder in data/staged through the portal
-```
-
-Without a model gateway, `fairdemo curate FOLDER --no-llm` still produces a facts-only record.
 
 ## Run it on a VAST cluster
 
@@ -181,7 +164,7 @@ bytes and the snapshot that preserves them. Images (TIFF) stay as files.
 
 Examples from the demo data: the mean sea-surface temperature in a North Atlantic box (lat 50–60, lon
 320–350: 4,798 cells); muons with pt ≥ 20 GeV (214,041 of 441,394); gnomAD variants with AF ≥ 0.05; M4
-traffic counts in 2024. In local mode (Parquet) each takes under 20 ms.
+traffic counts in 2024.
 
 ## Backlog: dark data already on the system
 
