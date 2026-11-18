@@ -5,8 +5,7 @@ you control. Every step is a command in this repository, and every step can be r
 exists and creates only what's missing. Allow about two hours the first time, mostly waiting for image
 builds and uploads.
 
-It was built and tested on VAST 5.5.0 SP6 with DataEngine 5.5.0-sp2 on RKE2 v1.34, and the curation logic also
-runs with no cluster at all (see the README, *Run it without a cluster*).
+It was built and tested on VAST 5.5.0 SP6 with DataEngine 5.5.0-sp2 on RKE2 v1.34.
 
 ## What you'll have at the end
 
